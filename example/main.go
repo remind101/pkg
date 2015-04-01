@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -15,9 +15,15 @@ import (
 )
 
 func ok(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	io.WriteString(w, "Ok\n")
-	logger.Log(ctx, "foo", "bar")
-	return nil
+	ip, err := ip(ctx)
+	if err != nil {
+		return err
+	}
+
+	logger.Log(ctx, "ip", ip)
+
+	_, err = fmt.Fprintf(w, "%s\n", ip)
+	return err
 }
 
 func bad(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
@@ -67,4 +73,26 @@ type Error struct {
 
 func (e *Error) Error() string {
 	return fmt.Sprintf("%s: %s", e.ID, e.Err)
+}
+
+// ip returns your ip.
+func ip(ctx context.Context) (string, error) {
+	req, err := http.NewRequest("GET", "http://api.ipify.org?format=text", nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("X-Request-ID", httpx.RequestID(ctx))
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	raw, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return string(raw), nil
 }
