@@ -9,6 +9,10 @@ package pkg is a collection of Go packages that provide a layer of convenience o
 * **[reporter](./reporter)**: Defines a general abstraction for error reporting, with implementations for honeybadger.
 * **[metrics](./metrics)**: TODO
 
+## Usage
+
+For examples of usage, see the **[example](./example)** directory.
+
 ## Why context.Context?
 
 In dynamic languages like Ruby, it's common to use thread local variables to store request specific information, like a request id:
