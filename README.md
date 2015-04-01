@@ -8,3 +8,18 @@ package pkg is a collection of Go packages that provide a layer of convenience o
 * **[logger](./logger)**: Defines a context aware structured logger.
 * **[reporter](./reporter)**: Defines a general abstraction for error reporting, with implementations for honeybadger.
 * **[metrics](./metrics)**: TODO
+
+## Why context.Context?
+
+In dynamic languages like Ruby, it's common to use thread local variables to store request specific information, like a request id:
+
+```ruby
+Thread.current[:request_id] = env['HTTP_X_REQUEST_ID']
+```
+
+This isn't possible to do in Go. There are various implementations that try to overcome this by storing request specific information in a global variable, but this is problematic for a number of reasons.
+
+1. Most of these implementations, like **[gorilla/context](https://github.com/gorilla/context)** tie the request specific information to an `*http.Request`, which is janky if your api is provided over something like a queue or rpc instead of http.
+2. These implementations don't handle deadlines and cancellations in a generic way.
+
+Using context.Context provides a generic way to allow request specific information to traverse api boundaries.
