@@ -9,12 +9,14 @@ import (
 
 	"github.com/remind101/pkg/httpx"
 	"github.com/remind101/pkg/httpx/middleware"
+	"github.com/remind101/pkg/logger"
 	"github.com/remind101/pkg/reporter"
 	"golang.org/x/net/context"
 )
 
 func ok(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	io.WriteString(w, "Ok\n")
+	logger.Log(ctx, "foo", "bar")
 	return nil
 }
 
