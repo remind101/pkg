@@ -1,5 +1,9 @@
-pkg/ is a collection of utility packages used by the Empire project without being specific to its internals.
+# github.com/remind101/pkg
 
-Utility packages are kept separate from the empire core codebase to keep it as small and concise as possible. If some utilities grow larger and their APIs stabilize, they may be moved to their own repository, to facilitate re-use by other projects. However that is not the priority.
+package pkg is a collection of Go packages that provide a layer of convenience over the stdlib and primarily adds **[context.Context](https://godoc.org/golang.org/x/net/context)** awareness, making it easier to do things like distributed request tracing.
 
-The directory pkg is named after the same directory in the Docker and camlistore projects.
+## Packages
+
+* **[httpx](./httpx)**: Defines an httpx.Handler interface, an httpx.Handler router, and middleware.
+* **[logger](./logger)**: Defines a context aware structured logger.
+* **[reporter](./reporter)**: Defines a general abstraction for error reporting, with implementations for honeybadger.
