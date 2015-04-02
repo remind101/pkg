@@ -1,4 +1,4 @@
-# [remind101/pkg](https://github.com/remind101/pkg) [![Build Status](https://magnum.travis-ci.com/remind101/pkg.svg?token=Uca1q7og621AjpUDJUEC&branch=master)](https://magnum.travis-ci.com/remind101/pkg)
+# [remind101/pkg](https://github.com/remind101/pkg) [![Build Status](https://magnum.travis-ci.com/remind101/pkg.svg?token=Uca1q7og621AjpUDJUEC&branch=master)](https://magnum.travis-ci.com/remind101/pkg) [![GoDoc](https://godoc.org/github.com/remind101/pkg?status.svg)](https://godoc.org/github.com/remind101/pkg)
 
 package pkg is a collection of Go packages that provide a layer of convenience over the stdlib and primarily adds **[context.Context](https://godoc.org/golang.org/x/net/context)** awareness, making it easier to do things like distributed request tracing.
 
