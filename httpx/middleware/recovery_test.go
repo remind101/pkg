@@ -21,7 +21,7 @@ func TestRecovery(t *testing.T) {
 		Reporter: reporter.ReporterFunc(func(ctx context.Context, err error) error {
 			called = true
 
-			if err != errBoom {
+			if err.(*reporter.Error).Err != errBoom {
 				t.Fatalf("err => %v; want %v", err, errBoom)
 			}
 
