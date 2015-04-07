@@ -10,7 +10,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-var ErrFake = errors.New("boom")
+var errBoom = errors.New("boom")
 
 func TestReport(t *testing.T) {
 	r := ReporterFunc(func(ctx context.Context, err error) error {
@@ -35,7 +35,7 @@ func TestReport(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	AddRequest(ctx, req)
 
-	if err := Report(ctx, ErrFake); err != nil {
+	if err := Report(ctx, errBoom); err != nil {
 		t.Fatal(err)
 	}
 }

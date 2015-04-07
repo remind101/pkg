@@ -27,7 +27,7 @@ func TestMultiReporter(t *testing.T) {
 		reporters: []Reporter{r1, r2},
 	}
 
-	if err := h.Report(context.Background(), ErrFake); err != nil {
+	if err := h.Report(context.Background(), errBoom); err != nil {
 		t.Fatal(err)
 	}
 
@@ -54,7 +54,7 @@ func TestMultiReporterError(t *testing.T) {
 		reporters: []Reporter{r1, r2},
 	}
 
-	err := h.Report(context.Background(), ErrFake)
+	err := h.Report(context.Background(), errBoom)
 
 	if _, ok := err.(*MultiError); !ok {
 		t.Fatal("Expected a MultiError to be returned")

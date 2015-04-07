@@ -15,7 +15,7 @@ func TestLogReporter(t *testing.T) {
 	h := &LogReporter{}
 
 	ctx := logger.WithLogger(context.Background(), l)
-	if err := h.Report(ctx, ErrFake); err != nil {
+	if err := h.Report(ctx, errBoom); err != nil {
 		t.Fatal(err)
 	}
 
