@@ -15,7 +15,11 @@ var DefaultMax = 1024
 
 // Reporter represents an error handler.
 type Reporter interface {
-	// Report reports the error to an external system.
+	// Report reports the error to an external system. The provided error
+	// could be an Error instance, which will contain additional information
+	// about the error, including a backtrace and any contextual
+	// information. Implementers should type assert the error to an *Error
+	// if they want to report the backtrace.
 	Report(context.Context, error) error
 }
 
@@ -61,8 +65,8 @@ func newError(ctx context.Context, err error) *Error {
 	}
 }
 
-// Report generates a new ErrorReport and uses the embedded reporter to report
-// it.
+// Report wraps the err as an Error and reports it the the Reporter embedded
+// within the context.Context.
 func Report(ctx context.Context, err error) error {
 	e := newError(ctx, err)
 
@@ -80,7 +84,8 @@ type BacktraceLine struct {
 	Line int
 }
 
-// Error represents information about an error.
+// Error wraps an error with additional information, like a backtrace,
+// contextual information, and an http request if provided.
 type Error struct {
 	// The error that was generated.
 	Err error
@@ -100,7 +105,8 @@ func (e *Error) Error() string {
 	return e.Err.Error()
 }
 
-// NewError returns a new Error instance.
+// NewError wraps err as an Error and generates a backtrace pointing at the
+// caller of this function.
 func NewError(err error, skip int) *Error {
 	return &Error{
 		Err:       err,
