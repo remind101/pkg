@@ -51,10 +51,20 @@ func AddRequest(ctx context.Context, req *http.Request) {
 	i.request = req
 }
 
+// newError returns a new Error instance. If err is already an Error instance,
+// it will be returned, otherwise err will be wrapped with NewErrorWithContext.
+func newError(ctx context.Context, err error) *Error {
+	if e, ok := err.(*Error); ok {
+		return e
+	} else {
+		return NewErrorWithContext(ctx, err, 2)
+	}
+}
+
 // Report generates a new ErrorReport and uses the embedded reporter to report
 // it.
 func Report(ctx context.Context, err error) error {
-	e := NewErrorWithContext(ctx, err, 1)
+	e := newError(ctx, err)
 
 	if r, ok := FromContext(ctx); ok {
 		return r.Report(ctx, e)
