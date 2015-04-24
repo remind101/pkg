@@ -31,7 +31,7 @@ func (h *Logger) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r 
 	l := logger.New(log.New(h.Device, fmt.Sprintf("request_id=%s ", httpx.RequestID(ctx)), 0))
 	ctx = logger.WithLogger(ctx, l)
 
-	l.Log(
+	l.Info(
 		"at", "request",
 		"method", r.Method,
 		"path", fmt.Sprintf(`"%s"`, r.URL.Path),

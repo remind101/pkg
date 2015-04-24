@@ -22,16 +22,16 @@ func TestLogger(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		out := testLog(msg, tt.in...)
+		out := testInfo(msg, tt.in...)
 		if got, want := out, tt.out; got != want {
 			t.Fatalf("Log => %q; want %q", got, want)
 		}
 	}
 }
 
-func testLog(msg string, pairs ...interface{}) string {
+func testInfo(msg string, pairs ...interface{}) string {
 	b := new(bytes.Buffer)
 	l := New(log.New(b, "", 0))
-	l.Log(msg, pairs...)
+	l.Info(msg, pairs...)
 	return b.String()
 }

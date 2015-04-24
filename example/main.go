@@ -20,7 +20,7 @@ func ok(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	logger.Log(ctx, "ip", ip)
+	logger.Info(ctx, "ip address", "ip", ip)
 
 	_, err = fmt.Fprintf(w, "%s\n", ip)
 	return err
