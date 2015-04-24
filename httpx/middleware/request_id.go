@@ -7,9 +7,9 @@ import (
 	"golang.org/x/net/context"
 )
 
-// HeaderRequestID is the default name of the header to extract request ids
-// from.
-var HeaderRequestID = []string{"X-Request-Id", "Request-Id"}
+// DefaultRequestIDExtractor is the default function to use to extract a request
+// id from an http.Request.
+var DefaultRequestIDExtractor = HeaderExtractor([]string{"X-Request-Id", "Request-Id"})
 
 // RequestID is middleware that extracts a request id from the headers and
 // inserts it into the context.
@@ -34,7 +34,7 @@ func ExtractRequestID(h httpx.Handler) *RequestID {
 func (h *RequestID) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	e := h.Extractor
 	if e == nil {
-		e = extractRequestID
+		e = DefaultRequestIDExtractor
 	}
 	requestID := e(r)
 
@@ -42,13 +42,17 @@ func (h *RequestID) ServeHTTPContext(ctx context.Context, w http.ResponseWriter,
 	return h.handler.ServeHTTPContext(ctx, w, r)
 }
 
-func extractRequestID(r *http.Request) string {
-	for _, h := range HeaderRequestID {
-		v := r.Header.Get(h)
-		if v != "" {
-			return v
+// HeaderExtractor returns a function that can extract a request id from a list
+// of headers.
+func HeaderExtractor(headers []string) func(*http.Request) string {
+	return func(r *http.Request) string {
+		for _, h := range headers {
+			v := r.Header.Get(h)
+			if v != "" {
+				return v
+			}
 		}
-	}
 
-	return ""
+		return ""
+	}
 }
