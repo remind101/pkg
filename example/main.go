@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 
 	"github.com/remind101/pkg/httpx"
 	"github.com/remind101/pkg/httpx/middleware"
@@ -58,7 +57,7 @@ func main() {
 
 	// Adds a logger to the context.Context that will log to stdout,
 	// prefixed with the request id.
-	h = middleware.NewLogger(h, os.Stdout)
+	h = middleware.LogTo(h, middleware.StdoutLogger)
 
 	// Adds the request id to the context.
 	h = middleware.ExtractRequestID(h)
