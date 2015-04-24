@@ -12,7 +12,12 @@ import (
 
 // Logger represents a structured logger.
 type Logger interface {
-	Log(pairs ...interface{})
+	Log(msg string, pairs ...interface{})
+	Debug(msg string, pairs ...interface{})
+	Info(msg string, pairs ...interface{})
+	Warn(msg string, pairs ...interface{})
+	Error(msg string, pairs ...interface{})
+	Crit(msg string, pairs ...interface{})
 }
 
 // logger is an implementation of the Logger interface.
@@ -29,9 +34,24 @@ func New(l *log.Logger) Logger {
 
 // Log logs the pairs in logfmt. It will treat consecutive arguments as a key
 // value pair. Given the input:
-func (l *logger) Log(pairs ...interface{}) {
+func (l *logger) Log(msg string, pairs ...interface{}) {
 	m := l.message(pairs...)
-	l.Println(m)
+	l.Println(msg, m)
+}
+func (l *logger) Debug(msg string, pairs ...interface{}) {
+	l.Log(msg, pairs...)
+}
+func (l *logger) Info(msg string, pairs ...interface{}) {
+	l.Log(msg, pairs...)
+}
+func (l *logger) Warn(msg string, pairs ...interface{}) {
+	l.Log(msg, pairs...)
+}
+func (l *logger) Error(msg string, pairs ...interface{}) {
+	l.Log(msg, pairs...)
+}
+func (l *logger) Crit(msg string, pairs ...interface{}) {
+	l.Log(msg, pairs...)
 }
 
 func (l *logger) message(pairs ...interface{}) string {
@@ -74,9 +94,9 @@ func FromContext(ctx context.Context) (Logger, bool) {
 
 // Log is a convenience method, which extracts a logger from the context object,
 // then calls the Log method on it.
-func Log(ctx context.Context, pairs ...interface{}) {
+func Log(ctx context.Context, msg string, pairs ...interface{}) {
 	if l, ok := FromContext(ctx); ok {
-		l.Log(pairs...)
+		l.Log(msg, pairs...)
 	}
 }
 
