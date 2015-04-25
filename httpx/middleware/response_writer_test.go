@@ -85,27 +85,6 @@ func TestResponseWriterWritingHeader(t *testing.T) {
 	expect(t, rw.Size(), 0)
 }
 
-func TestResponseWriterBefore(t *testing.T) {
-	rec := httptest.NewRecorder()
-	rw := NewResponseWriter(rec)
-	result := ""
-
-	rw.Before(func(ResponseWriter) {
-		result += "foo"
-	})
-	rw.Before(func(ResponseWriter) {
-		result += "bar"
-	})
-
-	rw.WriteHeader(http.StatusNotFound)
-
-	expect(t, rec.Code, rw.Status())
-	expect(t, rec.Body.String(), "")
-	expect(t, rw.Status(), http.StatusNotFound)
-	expect(t, rw.Size(), 0)
-	expect(t, result, "barfoo")
-}
-
 func TestResponseWriterHijack(t *testing.T) {
 	hijackable := newHijackableResponse()
 	rw := NewResponseWriter(hijackable)

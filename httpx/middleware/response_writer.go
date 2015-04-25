@@ -8,8 +8,7 @@ import (
 )
 
 // ResponseWriter is a wrapper around http.ResponseWriter that provides extra information about
-// the response. It is recommended that middleware handlers use this construct to wrap a responsewriter
-// if the functionality calls for it.
+// the response.
 type ResponseWriter interface {
 	http.ResponseWriter
 	http.Flusher
@@ -19,28 +18,21 @@ type ResponseWriter interface {
 	Written() bool
 	// Size returns the size of the response body.
 	Size() int
-	// Before allows for a function to be called before the ResponseWriter has been written to. This is
-	// useful for setting headers or any other operations that must happen before a response has been written.
-	Before(func(ResponseWriter))
 }
-
-type beforeFunc func(ResponseWriter)
 
 // NewResponseWriter creates a ResponseWriter that wraps an http.ResponseWriter
 func NewResponseWriter(rw http.ResponseWriter) ResponseWriter {
-	return &responseWriter{rw, 0, 0, nil}
+	return &responseWriter{rw, 0, 0}
 }
 
 type responseWriter struct {
 	http.ResponseWriter
-	status      int
-	size        int
-	beforeFuncs []beforeFunc
+	status int
+	size   int
 }
 
 func (rw *responseWriter) WriteHeader(s int) {
 	rw.status = s
-	rw.callBefore()
 	rw.ResponseWriter.WriteHeader(s)
 }
 
@@ -66,10 +58,6 @@ func (rw *responseWriter) Written() bool {
 	return rw.status != 0
 }
 
-func (rw *responseWriter) Before(before func(ResponseWriter)) {
-	rw.beforeFuncs = append(rw.beforeFuncs, before)
-}
-
 func (rw *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	hijacker, ok := rw.ResponseWriter.(http.Hijacker)
 	if !ok {
@@ -80,12 +68,6 @@ func (rw *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 
 func (rw *responseWriter) CloseNotify() <-chan bool {
 	return rw.ResponseWriter.(http.CloseNotifier).CloseNotify()
-}
-
-func (rw *responseWriter) callBefore() {
-	for i := len(rw.beforeFuncs) - 1; i >= 0; i-- {
-		rw.beforeFuncs[i](rw)
-	}
 }
 
 func (rw *responseWriter) Flush() {
