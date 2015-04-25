@@ -2,7 +2,9 @@
 package hb
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"reflect"
 	"runtime"
@@ -106,6 +108,8 @@ func NewReport(err error) *Report {
 		for key, value := range e.Context {
 			r.Request.Context[key] = value
 		}
+
+		r.Request.Params = extractParams(e.Request)
 	}
 
 	return r
@@ -121,4 +125,23 @@ func functionName(pc uintptr) string {
 		return "???"
 	}
 	return fn.Name()
+}
+
+// extractParams extracts attempts to extract the body of the request.
+func extractParams(r *http.Request) (m map[string]interface{}) {
+	m = make(map[string]interface{})
+
+	if r == nil {
+		return m
+	}
+
+	defer func() { recover() }()
+
+	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
+		return
+	}
+
+	// TODO: Parse form
+
+	return
 }

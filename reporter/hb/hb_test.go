@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path"
+	"strings"
 	"testing"
 
 	"github.com/remind101/pkg/reporter"
@@ -44,9 +45,6 @@ func TestSend(t *testing.T) {
 }
 
 func TestNewReport(t *testing.T) {
-	req, _ := http.NewRequest("GET", "/api/foo", nil)
-	req.Header.Set("Content-Type", "application/json")
-
 	tests := []struct {
 		err     error
 		fixture string
@@ -81,9 +79,52 @@ func TestNewReport(t *testing.T) {
 				Context: map[string]interface{}{
 					"request_id": "1234",
 				},
-				Request: req,
+				Request: func() *http.Request {
+					req, _ := http.NewRequest("GET", "/api/foo", nil)
+					req.Header.Set("Content-Type", "application/json")
+					return req
+
+				}(),
 			},
 			fixture: "boom-request.json",
+		},
+
+		// reporter.Error with JSON request body.
+		{
+			err: &reporter.Error{
+				Err: errBoom,
+				Context: map[string]interface{}{
+					"request_id": "1234",
+				},
+				Request: func() *http.Request {
+					req, _ := http.NewRequest("POST", "/", strings.NewReader(`{"json":"body"}`))
+					req.Header.Set("Content-Type", "application/json")
+					return req
+				}(),
+			},
+			fixture: "boom-request-json-body.json",
+		},
+
+		// reporter.Error with JSON request body that's been read
+		// already. Because an io.Reader can only be read from once, we
+		// want to make sure that we don't blow up if it's already been
+		// read. Consumers should set r.Body to a new io.Reader after
+		// reading the request body.
+		{
+			err: &reporter.Error{
+				Err: errBoom,
+				Context: map[string]interface{}{
+					"request_id": "1234",
+				},
+				Request: func() *http.Request {
+					r := strings.NewReader(`{"json":"body"}`)
+					ioutil.ReadAll(r)
+					req, _ := http.NewRequest("POST", "/", r)
+					req.Header.Set("Content-Type", "application/json")
+					return req
+				}(),
+			},
+			fixture: "boom-request-json-body-read.json",
 		},
 	}
 
