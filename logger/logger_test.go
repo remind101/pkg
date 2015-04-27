@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"log"
 	"testing"
+
+	"golang.org/x/net/context"
 )
 
 func TestLogger(t *testing.T) {
@@ -32,6 +34,6 @@ func TestLogger(t *testing.T) {
 func testInfo(msg string, pairs ...interface{}) string {
 	b := new(bytes.Buffer)
 	l := New(log.New(b, "", 0))
-	l.Info(msg, pairs...)
+	l.Info(context.Background(), msg, pairs...)
 	return b.String()
 }

@@ -12,11 +12,11 @@ import (
 
 // Logger represents a structured leveled logger.
 type Logger interface {
-	Debug(msg string, pairs ...interface{})
-	Info(msg string, pairs ...interface{})
-	Warn(msg string, pairs ...interface{})
-	Error(msg string, pairs ...interface{})
-	Crit(msg string, pairs ...interface{})
+	Debug(ctx context.Context, msg string, pairs ...interface{})
+	Info(ctx context.Context, msg string, pairs ...interface{})
+	Warn(ctx context.Context, msg string, pairs ...interface{})
+	Error(ctx context.Context, msg string, pairs ...interface{})
+	Crit(ctx context.Context, msg string, pairs ...interface{})
 }
 
 // logger is an implementation of the Logger interface backed by the stdlib's
@@ -41,11 +41,11 @@ func (l *logger) Log(msg string, pairs ...interface{}) {
 	l.Println(msg, m)
 }
 
-func (l *logger) Debug(msg string, pairs ...interface{}) { l.Log(msg, pairs...) }
-func (l *logger) Info(msg string, pairs ...interface{})  { l.Log(msg, pairs...) }
-func (l *logger) Warn(msg string, pairs ...interface{})  { l.Log(msg, pairs...) }
-func (l *logger) Error(msg string, pairs ...interface{}) { l.Log(msg, pairs...) }
-func (l *logger) Crit(msg string, pairs ...interface{})  { l.Log(msg, pairs...) }
+func (l *logger) Debug(ctx context.Context, msg string, pairs ...interface{}) { l.Log(msg, pairs...) }
+func (l *logger) Info(ctx context.Context, msg string, pairs ...interface{})  { l.Log(msg, pairs...) }
+func (l *logger) Warn(ctx context.Context, msg string, pairs ...interface{})  { l.Log(msg, pairs...) }
+func (l *logger) Error(ctx context.Context, msg string, pairs ...interface{}) { l.Log(msg, pairs...) }
+func (l *logger) Crit(ctx context.Context, msg string, pairs ...interface{})  { l.Log(msg, pairs...) }
 
 func (l *logger) message(pairs ...interface{}) string {
 	if len(pairs) == 1 {
@@ -87,31 +87,31 @@ func FromContext(ctx context.Context) (Logger, bool) {
 
 func Info(ctx context.Context, msg string, pairs ...interface{}) {
 	withLogger(ctx, func(l Logger) {
-		l.Info(msg, pairs...)
+		l.Info(ctx, msg, pairs...)
 	})
 }
 
 func Debug(ctx context.Context, msg string, pairs ...interface{}) {
 	withLogger(ctx, func(l Logger) {
-		l.Debug(msg, pairs...)
+		l.Debug(ctx, msg, pairs...)
 	})
 }
 
 func Warn(ctx context.Context, msg string, pairs ...interface{}) {
 	withLogger(ctx, func(l Logger) {
-		l.Warn(msg, pairs...)
+		l.Warn(ctx, msg, pairs...)
 	})
 }
 
 func Error(ctx context.Context, msg string, pairs ...interface{}) {
 	withLogger(ctx, func(l Logger) {
-		l.Error(msg, pairs...)
+		l.Error(ctx, msg, pairs...)
 	})
 }
 
 func Crit(ctx context.Context, msg string, pairs ...interface{}) {
 	withLogger(ctx, func(l Logger) {
-		l.Crit(msg, pairs...)
+		l.Crit(ctx, msg, pairs...)
 	})
 }
 
@@ -119,6 +119,43 @@ func withLogger(ctx context.Context, fn func(l Logger)) {
 	if l, ok := FromContext(ctx); ok {
 		fn(l)
 	}
+}
+
+// StructuredLogger represents a structured logger that is not context.Context
+// aware, like log15.
+type StructuredLogger interface {
+	Debug(string, ...interface{})
+	Info(string, ...interface{})
+	Warn(string, ...interface{})
+	Error(string, ...interface{})
+	Crit(string, ...interface{})
+}
+
+// wrappedLogger wraps a structured logger that doesn't take a context.Context
+// as the first argument, like log15, as a Logger.
+type wrappedLogger struct {
+	logger StructuredLogger
+}
+
+// Wrap wraps a StructuredLogger as a Logger.
+func Wrap(l StructuredLogger) Logger {
+	return &wrappedLogger{l}
+}
+
+func (l *wrappedLogger) Info(ctx context.Context, msg string, pairs ...interface{}) {
+	l.logger.Info(msg, pairs...)
+}
+func (l *wrappedLogger) Debug(ctx context.Context, msg string, pairs ...interface{}) {
+	l.logger.Debug(msg, pairs...)
+}
+func (l *wrappedLogger) Warn(ctx context.Context, msg string, pairs ...interface{}) {
+	l.logger.Warn(msg, pairs...)
+}
+func (l *wrappedLogger) Error(ctx context.Context, msg string, pairs ...interface{}) {
+	l.logger.Error(msg, pairs...)
+}
+func (l *wrappedLogger) Crit(ctx context.Context, msg string, pairs ...interface{}) {
+	l.logger.Crit(msg, pairs...)
 }
 
 type key int
