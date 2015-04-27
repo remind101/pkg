@@ -56,7 +56,7 @@ func (h *Logger) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r 
 
 	logger.Info(ctx, "request.start",
 		"method", r.Method,
-		"path", fmt.Sprintf(`"%s"`, r.URL.Path),
+		"path", r.URL.Path,
 	)
 
 	err := h.handler.ServeHTTPContext(ctx, rw, r)

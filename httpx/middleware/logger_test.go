@@ -27,7 +27,7 @@ func TestLogger(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if got, want := b.String(), "request_id= request.start method=GET path=\"/\"\nrequest_id= request.complete status=201\n"; got != want {
+	if got, want := b.String(), "request_id= request.start method=GET path=/\nrequest_id= request.complete status=201\n"; got != want {
 		t.Fatalf("%s; want %s", got, want)
 	}
 }
