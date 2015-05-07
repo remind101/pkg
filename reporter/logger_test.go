@@ -15,8 +15,8 @@ func TestLogReporter(t *testing.T) {
 		out string
 	}{
 		{errBoom, "request_id=1234  error=\"boom\"\n"},
-		{&Error{Err: errBoom}, "request_id=1234  error=\"boom\" line=0 file=unknown\n"},
-		{&Error{Err: errBoom, Backtrace: []*BacktraceLine{&BacktraceLine{File: "foo.go", Line: 1}}}, "request_id=1234  error=\"boom\" line=1 file=foo.go\n"},
+		{&Error{Err: errBoom}, "request_id=1234  error=\"boom\"\n"},
+		{&Error{Err: errBoom, Backtrace: []*BacktraceLine{&BacktraceLine{File: "foo.go", Line: 1}}}, "request_id=1234  error=\"boom\"\n"},
 	}
 
 	for i, tt := range tests {

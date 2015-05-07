@@ -8,7 +8,10 @@ import (
 )
 
 // LogReporter is a Handler that logs the error to a log.Logger.
-type LogReporter struct{}
+type LogReporter struct {
+	// If true, the full stack trace will be printed to Stdout.
+	PrintStack bool
+}
 
 func NewLogReporter() *LogReporter {
 	return &LogReporter{}
@@ -16,22 +19,12 @@ func NewLogReporter() *LogReporter {
 
 // Report logs the error to the Logger.
 func (h *LogReporter) Report(ctx context.Context, err error) error {
-	switch err := err.(type) {
-	case *Error:
-		var line *BacktraceLine
+	logger.Error(ctx, "", "error", fmt.Sprintf(`"%v"`, err))
 
-		if len(err.Backtrace) > 0 {
-			line = err.Backtrace[0]
-		} else {
-			line = &BacktraceLine{
-				File: "unknown",
-				Line: 0,
-			}
+	if err, ok := err.(*Error); ok && h.PrintStack {
+		for _, l := range err.Backtrace {
+			fmt.Println("%s:%d", l.File, l.Line)
 		}
-
-		logger.Error(ctx, "", "error", fmt.Sprintf(`"%v"`, err), "line", line.Line, "file", line.File)
-	default:
-		logger.Error(ctx, "", "error", fmt.Sprintf(`"%v"`, err))
 	}
 
 	return nil
