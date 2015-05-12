@@ -80,6 +80,18 @@ func TestRouter(t *testing.T) {
 			req:  newRequest("GET", "/", nil),
 			body: "not found",
 		},
+
+		// Pulling out current route.
+		{
+			routes: func(r *Router) {
+				r.Handle("/path", HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+					io.WriteString(w, RouteFromContext(ctx).GetName())
+					return nil
+				})).Methods("GET").Name("bar")
+			},
+			req:  newRequest("GET", "/path", nil),
+			body: "bar",
+		},
 	}
 
 	for i, tt := range tests {

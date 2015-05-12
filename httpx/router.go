@@ -3,6 +3,7 @@ package httpx
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/gorilla/mux"
 	"golang.org/x/net/context"
@@ -58,10 +59,11 @@ func (r *Router) handler(h Handler) http.Handler {
 
 // Handler returns a Handler that can be used to serve the request. Most of this
 // is pulled from http://goo.gl/tyxad8.
-func (r *Router) Handler(req *http.Request) (h Handler, vars map[string]string) {
+func (r *Router) Handler(req *http.Request) (route *Route, h Handler, vars map[string]string) {
 	var match mux.RouteMatch
 
 	if r.mux.Match(req, &match) {
+		route = &Route{match.Route}
 		h = match.Handler.(Handler)
 		vars = match.Vars
 		return
@@ -78,8 +80,10 @@ func (r *Router) Handler(req *http.Request) (h Handler, vars map[string]string) 
 
 // ServeHTTPContext implements the Handler interface.
 func (r *Router) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	h, vars := r.Handler(req)
-	return h.ServeHTTPContext(WithVars(ctx, vars), w, req)
+	route, h, vars := r.Handler(req)
+	ctx = WithVars(ctx, vars)
+	ctx = WithRoute(ctx, route)
+	return h.ServeHTTPContext(ctx, w, req)
 }
 
 // Vars extracts the route vars from a context.Context.
@@ -97,9 +101,20 @@ func WithVars(ctx context.Context, vars map[string]string) context.Context {
 	return context.WithValue(ctx, varsKey, vars)
 }
 
+// WithVars adds the current Route to the context.Context.
+func WithRoute(ctx context.Context, r *Route) context.Context {
+	return context.WithValue(ctx, routeKey, r)
+}
+
 // Route wraps a mux.Route.
 type Route struct {
 	route *mux.Route
+}
+
+// RouteFromContext extracts the current Route from a context.Context.
+func RouteFromContext(ctx context.Context) *Route {
+	r, _ := ctx.Value(routeKey).(*Route)
+	return r
 }
 
 // Methods adds a matcher for HTTP methods.
@@ -117,6 +132,22 @@ func (r *Route) HandlerFunc(f func(context.Context, http.ResponseWriter, *http.R
 // Handler sets the httpx.Handler for this route.
 func (r *Route) Handler(h Handler) *Route {
 	return &Route{r.route.Handler(r.handler(h))}
+}
+
+// Name sets the name for the route, used to build URLs.
+// If the name was registered already it will be overwritten.
+func (r *Route) Name(name string) *Route {
+	return &Route{r.route.Name(name)}
+}
+
+// GetName returns the name for the route, if any.
+func (r *Route) GetName() string {
+	return r.route.GetName()
+}
+
+// See mux.Route.URL.
+func (r *Route) URL(pairs ...string) (*url.URL, error) {
+	return r.route.URL(pairs...)
 }
 
 // mux.Handler expects an http.Handler. We wrap the Hander in a handler,
