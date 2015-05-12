@@ -25,15 +25,19 @@ func NewRouter() *Router {
 	}
 }
 
-// Handle adds a new router that routes requests using the method verb against
-// path to the given Handler.
-func (r *Router) Handle(method, path string, h Handler) {
-	r.mux.Handle(path, r.handler(h)).Methods(method)
+// Handle registers a new route with a matcher for the URL path
+func (r *Router) Handle(path string, h Handler) *Route {
+	return &Route{r.mux.Handle(path, r.handler(h))}
+}
+
+// HandleFunc registers a new route with a matcher for the URL path
+func (r *Router) HandleFunc(path string, f func(context.Context, http.ResponseWriter, *http.Request) error) *Route {
+	return r.Handle(path, HandlerFunc(f))
 }
 
 // Header adds a route that will be used if the header value matches.
-func (r *Router) Header(key, value string, h Handler) {
-	r.mux.Headers(key, value).Handler(r.handler(h))
+func (r *Router) Headers(pairs ...string) *Route {
+	return &Route{r.mux.Headers(pairs...)}
 }
 
 // Match adds a route that will be matched if f returns true.
@@ -91,6 +95,35 @@ func Vars(ctx context.Context) map[string]string {
 // WithVars adds the vars to the context.Context.
 func WithVars(ctx context.Context, vars map[string]string) context.Context {
 	return context.WithValue(ctx, varsKey, vars)
+}
+
+// Route wraps a mux.Route.
+type Route struct {
+	route *mux.Route
+}
+
+// Methods adds a matcher for HTTP methods.
+// It accepts a sequence of one or more methods to be matched, e.g.:
+// "GET", "POST", "PUT".
+func (r *Route) Methods(methods ...string) *Route {
+	return &Route{r.route.Methods(methods...)}
+}
+
+// HandlerFunc sets the httpx.Handler for this route.
+func (r *Route) HandlerFunc(f func(context.Context, http.ResponseWriter, *http.Request) error) *Route {
+	return r.Handler(HandlerFunc(f))
+}
+
+// Handler sets the httpx.Handler for this route.
+func (r *Route) Handler(h Handler) *Route {
+	return &Route{r.route.Handler(r.handler(h))}
+}
+
+// mux.Handler expects an http.Handler. We wrap the Hander in a handler,
+// which satisfies the http.Handler interface. When this route is
+// eventually used, it's type asserted back to a Handler.
+func (r *Route) handler(h Handler) http.Handler {
+	return &handler{h}
 }
 
 // handler adapts a Handler to an http.Handler.
