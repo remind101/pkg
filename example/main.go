@@ -43,9 +43,9 @@ func main() {
 
 	m := httpx.NewRouter()
 
-	m.Handle("GET", "/ok", httpx.HandlerFunc(ok))
-	m.Handle("GET", "/bad", httpx.HandlerFunc(bad))
-	m.Handle("GET", "/boom", httpx.HandlerFunc(boom))
+	m.HandleFunc("/ok", ok).Methods("GET")
+	m.HandleFunc("/bad", bad).Methods("GET")
+	m.HandleFunc("/boom", boom).Methods("GET")
 
 	var h httpx.Handler
 
