@@ -18,6 +18,9 @@ type routerTest struct {
 
 	// The expected string body.
 	body string
+
+	// The expected path template
+	pathTemplate string
 }
 
 func TestRouter(t *testing.T) {
@@ -30,8 +33,9 @@ func TestRouter(t *testing.T) {
 					return nil
 				})).Methods("GET")
 			},
-			req:  newRequest("GET", "/path", nil),
-			body: "foo",
+			req:          newRequest("GET", "/path", nil),
+			body:         "foo",
+			pathTemplate: "/path",
 		},
 
 		// A headers based route.
@@ -47,7 +51,8 @@ func TestRouter(t *testing.T) {
 				r.Header.Set("X-Foo", "bar")
 				return r
 			}(),
-			body: "foo",
+			body:         "foo",
+			pathTemplate: "",
 		},
 
 		// A request with vars.
@@ -59,14 +64,16 @@ func TestRouter(t *testing.T) {
 					return nil
 				})).Methods("GET")
 			},
-			req:  newRequest("GET", "/path/acme-inc", nil),
-			body: "acme-inc",
+			req:          newRequest("GET", "/path/acme-inc", nil),
+			body:         "acme-inc",
+			pathTemplate: "/path/{app}",
 		},
 
 		// A not found request with no NotFoundHandler.
 		{
-			req:  newRequest("GET", "/", nil),
-			body: "404 page not found\n",
+			req:          newRequest("GET", "/", nil),
+			body:         "404 page not found\n",
+			pathTemplate: "",
 		},
 
 		// A not found request with a custom NotFoundHandler.
@@ -77,8 +84,9 @@ func TestRouter(t *testing.T) {
 					return nil
 				})
 			},
-			req:  newRequest("GET", "/", nil),
-			body: "not found",
+			req:          newRequest("GET", "/", nil),
+			body:         "not found",
+			pathTemplate: "",
 		},
 
 		// Pulling out current route.
@@ -89,8 +97,9 @@ func TestRouter(t *testing.T) {
 					return nil
 				})).Methods("GET").Name("bar")
 			},
-			req:  newRequest("GET", "/path", nil),
-			body: "bar",
+			req:          newRequest("GET", "/path", nil),
+			body:         "bar",
+			pathTemplate: "/path",
 		},
 	}
 
@@ -115,6 +124,24 @@ func testRouterTest(t *testing.T, tt *routerTest, i int) {
 
 	if got, want := resp.Body.String(), tt.body; got != want {
 		t.Fatalf("#%d: Body => %s; want %s", i, got, want)
+	}
+
+	testPathTemplate(t, r, tt, i)
+}
+
+func testPathTemplate(t *testing.T, r *Router, tt *routerTest, i int) {
+	route, _, _ := r.Handler(tt.req)
+	var got string
+	want := tt.pathTemplate
+
+	if route == nil {
+		got = ""
+	} else {
+		got = route.PathTemplate
+	}
+
+	if got != want {
+		t.Fatalf("#%d: PathTemplate => %s; want %s", i, got, want)
 	}
 }
 
