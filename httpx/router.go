@@ -150,6 +150,11 @@ func (r *Route) URL(pairs ...string) (*url.URL, error) {
 	return r.route.URL(pairs...)
 }
 
+// See mux.Route.URLPath.
+func (r *Route) URLPath(pairs ...string) (*url.URL, error) {
+	return r.route.URLPath(pairs...)
+}
+
 // mux.Handler expects an http.Handler. We wrap the Hander in a handler,
 // which satisfies the http.Handler interface. When this route is
 // eventually used, it's type asserted back to a Handler.
