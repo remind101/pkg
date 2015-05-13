@@ -1,37 +1,260 @@
-# Package httpx
 
-Package httpx provides a layer of convenience over "net/http". Specifically:
+# httpx
+    import "github.com/remind101/pkg/httpx"
 
-1. It's **[context.Context](https://godoc.org/golang.org/x/net/context)** aware.
-   This is good for storing request specific parameters, such as a request ids
-   and for performing deadlines and cancellations across api boundaries in a
-   generic way.
-2. `httpx.Handler`'s return an `error` which makes handler implementations feel
-   more idiomatic and reduces the chance of accidentally forgetting to return.
+package httpx provides an extra layer of convenience over package http.
 
-The most important part of package httpx is the `Handler` interface, which is
-defined as:
 
-```go
+
+
+
+
+## func NotFound
+``` go
+func NotFound(ctx context.Context, w http.ResponseWriter, r *http.Request) error
+```
+NotFound is a HandlerFunc that just delegates off to http.NotFound.
+
+
+## func RequestID
+``` go
+func RequestID(ctx context.Context) string
+```
+RequestID extracts a RequestID from a context.
+
+
+## func Vars
+``` go
+func Vars(ctx context.Context) map[string]string
+```
+Vars extracts the route vars from a context.Context.
+
+
+## func WithRequestID
+``` go
+func WithRequestID(ctx context.Context, requestID string) context.Context
+```
+WithRequestID inserts a RequestID into the context.
+
+
+## func WithRoute
+``` go
+func WithRoute(ctx context.Context, r *Route) context.Context
+```
+WithVars adds the current Route to the context.Context.
+
+
+## func WithVars
+``` go
+func WithVars(ctx context.Context, vars map[string]string) context.Context
+```
+WithVars adds the vars to the context.Context.
+
+
+
+## type Handler
+``` go
 type Handler interface {
-	ServeHTTPContext(context.Context, http.ResponseWriter, *http.Request) error
+    ServeHTTPContext(context.Context, http.ResponseWriter, *http.Request) error
 }
 ```
+Handler is represents a Handler that can take a context.Context as the
+first argument.
 
-## Usage
 
-In order to use the `httpx.Handler` interface, you need a compatible router. One is provided within this package that wraps [gorilla mux](https://github.com/gorilla/mux) to make it context.Context aware.
 
-```go
-r := httpx.NewRouter()
-r.HandleFunc("/", func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	io.WriteString(w, `ok`)
-	return nil
-}).Methods("GET")
 
-// Adapt the router to the http.Handler interface and insert a
-// context.Background().
-s := middleware.Background(r)
 
-http.ListenAndServe(":8080", s)
+
+
+
+
+
+
+## type HandlerFunc
+``` go
+type HandlerFunc func(context.Context, http.ResponseWriter, *http.Request) error
 ```
+The HandlerFunc type is an adapter to allow the use of ordinary functions as
+httpx handlers. If f is a function with the appropriate signature,
+HandlerFunc(f) is a Handler object that calls f.
+
+
+
+
+
+
+
+
+
+
+
+### func (HandlerFunc) ServeHTTPContext
+``` go
+func (f HandlerFunc) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r *http.Request) error
+```
+ServeHTTPContext calls f(ctx, w, r)
+
+
+
+## type Route
+``` go
+type Route struct {
+    // contains filtered or unexported fields
+}
+```
+Route wraps a mux.Route.
+
+
+
+
+
+
+
+
+
+### func RouteFromContext
+``` go
+func RouteFromContext(ctx context.Context) *Route
+```
+RouteFromContext extracts the current Route from a context.Context.
+
+
+
+
+### func (\*Route) GetName
+``` go
+func (r *Route) GetName() string
+```
+GetName returns the name for the route, if any.
+
+
+
+### func (\*Route) Handler
+``` go
+func (r *Route) Handler(h Handler) *Route
+```
+Handler sets the httpx.Handler for this route.
+
+
+
+### func (\*Route) HandlerFunc
+``` go
+func (r *Route) HandlerFunc(f func(context.Context, http.ResponseWriter, *http.Request) error) *Route
+```
+HandlerFunc sets the httpx.Handler for this route.
+
+
+
+### func (\*Route) Methods
+``` go
+func (r *Route) Methods(methods ...string) *Route
+```
+Methods adds a matcher for HTTP methods.
+It accepts a sequence of one or more methods to be matched, e.g.:
+"GET", "POST", "PUT".
+
+
+
+### func (\*Route) Name
+``` go
+func (r *Route) Name(name string) *Route
+```
+Name sets the name for the route, used to build URLs.
+If the name was registered already it will be overwritten.
+
+
+
+### func (\*Route) URL
+``` go
+func (r *Route) URL(pairs ...string) (*url.URL, error)
+```
+See mux.Route.URL.
+
+
+
+## type Router
+``` go
+type Router struct {
+    // NotFoundHandler is a Handler that will be called when a route is not
+    // found.
+    NotFoundHandler Handler
+    // contains filtered or unexported fields
+}
+```
+Router is an httpx.Handler router.
+
+
+
+
+
+
+
+
+
+### func NewRouter
+``` go
+func NewRouter() *Router
+```
+NewRouter returns a new Router instance.
+
+
+
+
+### func (\*Router) Handle
+``` go
+func (r *Router) Handle(path string, h Handler) *Route
+```
+Handle registers a new route with a matcher for the URL path
+
+
+
+### func (\*Router) HandleFunc
+``` go
+func (r *Router) HandleFunc(path string, f func(context.Context, http.ResponseWriter, *http.Request) error) *Route
+```
+HandleFunc registers a new route with a matcher for the URL path
+
+
+
+### func (\*Router) Handler
+``` go
+func (r *Router) Handler(req *http.Request) (route *Route, h Handler, vars map[string]string)
+```
+Handler returns a Handler that can be used to serve the request. Most of this
+is pulled from a href="http://goo.gl/tyxad8">http://goo.gl/tyxad8</a>.
+
+
+
+### func (\*Router) Headers
+``` go
+func (r *Router) Headers(pairs ...string) *Route
+```
+Header adds a route that will be used if the header value matches.
+
+
+
+### func (\*Router) Match
+``` go
+func (r *Router) Match(f func(*http.Request) bool, h Handler)
+```
+Match adds a route that will be matched if f returns true.
+
+
+
+### func (\*Router) ServeHTTPContext
+``` go
+func (r *Router) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, req *http.Request) error
+```
+ServeHTTPContext implements the Handler interface.
+
+
+
+
+
+
+
+
+
+- - -
+Generated by [godoc2md](http://godoc.org/github.com/davecheney/godoc2md)
