@@ -22,6 +22,14 @@ type Logger interface {
 	Crit(msg string, pairs ...interface{})
 }
 
+var _ childLogging = &logger{}
+
+// childLogging is an interface that loggers can implement to support
+// child/prefixed logging.
+type childLogging interface {
+	New(pairs ...interface{}) Logger
+}
+
 // logger is an implementation of the Logger interface backed by the stdlib's
 // logging facility. This is a fairly naive implementation, and it's probably
 // better to use something like https://github.com/inconshreveable/log15 which
@@ -35,6 +43,11 @@ func New(l *log.Logger) Logger {
 	return &logger{
 		Logger: l,
 	}
+}
+
+// New implemens the childLogging interface.
+func (l *logger) New(pairs ...interface{}) Logger {
+	return l
 }
 
 // Log logs the pairs in logfmt. It will treat consecutive arguments as a key
@@ -86,6 +99,22 @@ func WithLogger(ctx context.Context, l Logger) context.Context {
 func FromContext(ctx context.Context) (Logger, bool) {
 	l, ok := ctx.Value(loggerKey).(Logger)
 	return l, ok
+}
+
+// WithValues returns a new logger prefixed with the values of the given keys
+// after being extracted from the context.
+func WithValues(ctx context.Context, keys ...string) (Logger, bool) {
+	l, ok := FromContext(ctx)
+	if !ok {
+		return l, ok
+	}
+
+	if l, ok := l.(childLogging); ok {
+		return l.New(contextPairs(ctx, keys...)...), true
+	}
+
+	// TODO: Return false if the logger doesn't support child logging?
+	return l, true
 }
 
 func Info(ctx context.Context, msg string, pairs ...interface{}) {

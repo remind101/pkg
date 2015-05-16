@@ -28,7 +28,12 @@ func Trace(ctx context.Context) (context.Context, func(error, string, ...interfa
 	}
 
 	return ctx, func(err error, msg string, pairs ...interface{}) {
-		logger.InfoContext(ctx, msg, "trace.id", "trace.func", "trace.file", "trace.line", "trace.duration")
+		l, ok := logger.WithValues(ctx, "trace.id", "trace.func", "trace.file", "trace.line", "trace.duration")
+		if ok {
+			l.Info(msg, pairs...)
+		}
+
+		// Report the error to the reporter.
 		reporter.Report(ctx, err)
 	}
 }
