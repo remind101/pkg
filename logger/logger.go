@@ -5,10 +5,13 @@ package logger
 import (
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	"golang.org/x/net/context"
 )
+
+var Stdout = New(log.New(os.Stdout, "", 0))
 
 // Logger represents a structured leveled logger.
 type Logger interface {
@@ -91,6 +94,10 @@ func Info(ctx context.Context, msg string, pairs ...interface{}) {
 	})
 }
 
+func InfoContext(ctx context.Context, msg string, keys ...string) {
+	Info(ctx, msg, contextPairs(ctx, keys...)...)
+}
+
 func Debug(ctx context.Context, msg string, pairs ...interface{}) {
 	withLogger(ctx, func(l Logger) {
 		l.Debug(msg, pairs...)
@@ -119,6 +126,17 @@ func withLogger(ctx context.Context, fn func(l Logger)) {
 	if l, ok := FromContext(ctx); ok {
 		fn(l)
 	}
+}
+
+// contextPairs takes a slice of string keys, obtains their values from the
+// context.Context and returns the suitable list of key value pairs as a
+// []interface{}.
+func contextPairs(ctx context.Context, keys ...string) []interface{} {
+	var pairs []interface{}
+	for _, k := range keys {
+		pairs = append(pairs, k, ctx.Value(k))
+	}
+	return pairs
 }
 
 type key int
