@@ -22,7 +22,7 @@ func NewRelicTracing(h httpx.Handler, router *httpx.Router, tracer nra.TxTracer)
 
 func (h *NewRelicTracer) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	path := templatePath(h.router, r)
-	txName := fmt.Sprintf("%s (%s)", path, r.Method)
+	txName := fmt.Sprintf("%s %s", r.Method, path)
 
 	tx := h.createTx(txName, r.URL.String(), h.tracer)
 	ctx = nra.WithTx(ctx, tx)

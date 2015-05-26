@@ -32,7 +32,7 @@ func TestTracing(t *testing.T) {
 				})).Methods("GET")
 			},
 			req: newRequest("GET", "/path"),
-			expectedTransactionName: "/path (GET)",
+			expectedTransactionName: "GET /path",
 			expectedUrl:             "/path",
 		},
 		// path with variables
@@ -43,7 +43,7 @@ func TestTracing(t *testing.T) {
 				})).Methods("DELETE")
 			},
 			req: newRequest("DELETE", "/users/23"),
-			expectedTransactionName: "/users/:user_id (DELETE)",
+			expectedTransactionName: "DELETE /users/:user_id",
 			expectedUrl:             "/users/23",
 		},
 		// no route
@@ -51,7 +51,7 @@ func TestTracing(t *testing.T) {
 			routes: func(r *httpx.Router) {
 			},
 			req: newRequest("GET", "/non_existent"),
-			expectedTransactionName: "/non_existent (GET)",
+			expectedTransactionName: "GET /non_existent",
 			expectedUrl:             "/non_existent",
 		},
 	}
