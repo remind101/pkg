@@ -2,10 +2,11 @@ package middleware
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/remind101/nra"
 	"github.com/remind101/pkg/httpx"
 	"golang.org/x/net/context"
-	"net/http"
 )
 
 type NewRelicTracer struct {
@@ -20,10 +21,10 @@ func NewRelicTracing(h httpx.Handler, router *httpx.Router, tracer nra.TxTracer)
 }
 
 func (h *NewRelicTracer) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	templatePath := h.templatePath(r)
-	transactionName := fmt.Sprintf("%s (%s)", templatePath, r.Method)
+	path := templatePath(h.router, r)
+	txName := fmt.Sprintf("%s (%s)", path, r.Method)
 
-	tx := h.createTx(transactionName, r.URL.String(), h.tracer)
+	tx := h.createTx(txName, r.URL.String(), h.tracer)
 	ctx = nra.WithTx(ctx, tx)
 
 	tx.Start()
@@ -32,8 +33,8 @@ func (h *NewRelicTracer) ServeHTTPContext(ctx context.Context, w http.ResponseWr
 	return h.handler.ServeHTTPContext(ctx, w, r)
 }
 
-func (h *NewRelicTracer) templatePath(r *http.Request) string {
-	route, _, vars := h.router.Handler(r)
+func templatePath(router *httpx.Router, r *http.Request) string {
+	route, _, vars := router.Handler(r)
 	var templatePath string
 
 	if route != nil {
