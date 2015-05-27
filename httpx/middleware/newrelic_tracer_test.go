@@ -43,8 +43,19 @@ func TestTracing(t *testing.T) {
 				})).Methods("DELETE")
 			},
 			req: newRequest("DELETE", "/users/23"),
-			expectedTransactionName: "DELETE /users/:user_id",
+			expectedTransactionName: "DELETE /users/{user_id}",
 			expectedUrl:             "/users/23",
+		},
+		// path with regexp variables
+		{
+			routes: func(r *httpx.Router) {
+				r.Handle("/articles/{category}/{id:[0-9]+}", httpx.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+					return nil
+				})).Methods("PUT")
+			},
+			req: newRequest("PUT", "/articles/tech/123"),
+			expectedTransactionName: "PUT /articles/{category}/{id:[0-9]+}",
+			expectedUrl:             "/articles/tech/123",
 		},
 		// no route
 		{

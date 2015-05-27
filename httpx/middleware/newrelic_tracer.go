@@ -34,25 +34,18 @@ func (h *NewRelicTracer) ServeHTTPContext(ctx context.Context, w http.ResponseWr
 }
 
 func templatePath(router *httpx.Router, r *http.Request) string {
-	route, _, vars := router.Handler(r)
-	var templatePath string
+	var tpl string
 
+	route, _, _ := router.Handler(r)
 	if route != nil {
-		var pairs []string
-		for k, _ := range vars {
-			pairs = append(pairs, k, fmt.Sprintf(":%s", k))
-		}
-		url, err := route.URLPath(pairs...)
-		if err == nil {
-			templatePath = url.String()
-		}
+		tpl = route.GetPathTemplate()
 	}
 
-	if templatePath == "" {
-		templatePath = r.URL.Path
+	if tpl == "" {
+		tpl = r.URL.Path
 	}
 
-	return templatePath
+	return tpl
 }
 
 func createTx(name, url string, tracer nra.TxTracer) nra.Tx {

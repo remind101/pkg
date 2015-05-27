@@ -17,18 +17,22 @@ type Router struct {
 
 	// This router is ultimately backed by a gorilla mux router.
 	mux *mux.Router
+
+	// A map of mux.Route to Route so we can map the matched mux.Route back to our Route.
+	routes map[*mux.Route]*Route
 }
 
 // NewRouter returns a new Router instance.
 func NewRouter() *Router {
 	return &Router{
-		mux: mux.NewRouter(),
+		mux:    mux.NewRouter(),
+		routes: make(map[*mux.Route]*Route),
 	}
 }
 
 // Handle registers a new route with a matcher for the URL path
 func (r *Router) Handle(path string, h Handler) *Route {
-	return &Route{r.mux.Handle(path, r.handler(h))}
+	return r.getOrCreateRoute(r.mux.Handle(path, r.handler(h)), path)
 }
 
 // HandleFunc registers a new route with a matcher for the URL path
@@ -38,7 +42,7 @@ func (r *Router) HandleFunc(path string, f func(context.Context, http.ResponseWr
 
 // Header adds a route that will be used if the header value matches.
 func (r *Router) Headers(pairs ...string) *Route {
-	return &Route{r.mux.Headers(pairs...)}
+	return r.getOrCreateRoute(r.mux.Headers(pairs...), "")
 }
 
 // Match adds a route that will be matched if f returns true.
@@ -48,6 +52,17 @@ func (r *Router) Match(f func(*http.Request) bool, h Handler) {
 	}
 
 	r.mux.MatcherFunc(matcher).Handler(r.handler(h))
+}
+
+// Caches the routes so we have access to the original path template.
+func (r *Router) getOrCreateRoute(muxRoute *mux.Route, pathTpl string) *Route {
+	if route, ok := r.routes[muxRoute]; !ok {
+		route = &Route{muxRoute, pathTpl}
+		r.routes[muxRoute] = route
+	} else if pathTpl != "" {
+		route.pathTpl = pathTpl
+	}
+	return r.routes[muxRoute]
 }
 
 // mux.Handler expects an http.Handler. We wrap the Hander in a handler,
@@ -63,7 +78,7 @@ func (r *Router) Handler(req *http.Request) (route *Route, h Handler, vars map[s
 	var match mux.RouteMatch
 
 	if r.mux.Match(req, &match) {
-		route = &Route{match.Route}
+		route = r.getOrCreateRoute(match.Route, "")
 		h = match.Handler.(Handler)
 		vars = match.Vars
 		return
@@ -109,6 +124,9 @@ func WithRoute(ctx context.Context, r *Route) context.Context {
 // Route wraps a mux.Route.
 type Route struct {
 	route *mux.Route
+
+	// Path template for this route, if any.
+	pathTpl string
 }
 
 // RouteFromContext extracts the current Route from a context.Context.
@@ -121,7 +139,7 @@ func RouteFromContext(ctx context.Context) *Route {
 // It accepts a sequence of one or more methods to be matched, e.g.:
 // "GET", "POST", "PUT".
 func (r *Route) Methods(methods ...string) *Route {
-	return &Route{r.route.Methods(methods...)}
+	return &Route{route: r.route.Methods(methods...)}
 }
 
 // HandlerFunc sets the httpx.Handler for this route.
@@ -131,13 +149,13 @@ func (r *Route) HandlerFunc(f func(context.Context, http.ResponseWriter, *http.R
 
 // Handler sets the httpx.Handler for this route.
 func (r *Route) Handler(h Handler) *Route {
-	return &Route{r.route.Handler(r.handler(h))}
+	return &Route{route: r.route.Handler(r.handler(h))}
 }
 
 // Name sets the name for the route, used to build URLs.
 // If the name was registered already it will be overwritten.
 func (r *Route) Name(name string) *Route {
-	return &Route{r.route.Name(name)}
+	return &Route{route: r.route.Name(name)}
 }
 
 // GetName returns the name for the route, if any.
@@ -153,6 +171,11 @@ func (r *Route) URL(pairs ...string) (*url.URL, error) {
 // See mux.Route.URLPath.
 func (r *Route) URLPath(pairs ...string) (*url.URL, error) {
 	return r.route.URLPath(pairs...)
+}
+
+// Returns the path template for this route, if any.
+func (r *Route) GetPathTemplate() string {
+	return r.pathTpl
 }
 
 // mux.Handler expects an http.Handler. We wrap the Hander in a handler,
