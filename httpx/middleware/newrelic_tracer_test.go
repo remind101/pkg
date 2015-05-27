@@ -57,6 +57,17 @@ func TestTracing(t *testing.T) {
 			expectedTransactionName: "PUT /articles/{category}/{id:[0-9]+}",
 			expectedUrl:             "/articles/tech/123",
 		},
+		// using Path().Handler() style
+		{
+			routes: func(r *httpx.Router) {
+				r.Path("/articles/{category}/{id}").HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+					return nil
+				}).Methods("GET")
+			},
+			req: newRequest("GET", "/articles/tech/456"),
+			expectedTransactionName: "GET /articles/{category}/{id}",
+			expectedUrl:             "/articles/tech/456",
+		},
 		// no route
 		{
 			routes: func(r *httpx.Router) {

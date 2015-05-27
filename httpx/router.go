@@ -54,6 +54,11 @@ func (r *Router) Match(f func(*http.Request) bool, h Handler) {
 	r.mux.MatcherFunc(matcher).Handler(r.handler(h))
 }
 
+// Path registers a new route with a matcher for the URL path.
+func (r *Router) Path(path string) *Route {
+	return r.getOrCreateRoute(r.mux.Path(path), path)
+}
+
 // Caches the routes so we have access to the original path template.
 func (r *Router) getOrCreateRoute(muxRoute *mux.Route, pathTpl string) *Route {
 	if route, ok := r.routes[muxRoute]; !ok {
@@ -139,7 +144,8 @@ func RouteFromContext(ctx context.Context) *Route {
 // It accepts a sequence of one or more methods to be matched, e.g.:
 // "GET", "POST", "PUT".
 func (r *Route) Methods(methods ...string) *Route {
-	return &Route{route: r.route.Methods(methods...)}
+	r.route.Methods(methods...)
+	return r
 }
 
 // HandlerFunc sets the httpx.Handler for this route.
@@ -149,13 +155,15 @@ func (r *Route) HandlerFunc(f func(context.Context, http.ResponseWriter, *http.R
 
 // Handler sets the httpx.Handler for this route.
 func (r *Route) Handler(h Handler) *Route {
-	return &Route{route: r.route.Handler(r.handler(h))}
+	r.route.Handler(r.handler(h))
+	return r
 }
 
 // Name sets the name for the route, used to build URLs.
 // If the name was registered already it will be overwritten.
 func (r *Route) Name(name string) *Route {
-	return &Route{route: r.route.Name(name)}
+	r.route.Name(name)
+	return r
 }
 
 // GetName returns the name for the route, if any.
