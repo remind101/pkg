@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/remind101/nra"
+	"github.com/remind101/newrelic"
 	"github.com/remind101/pkg/httpx"
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/net/context"
@@ -96,7 +96,7 @@ func traceTest(t *testing.T, tt *tracerTest) {
 		handler: r,
 		router:  r,
 		tracer:  nil,
-		createTx: func(transactionName, url string, tracer nra.TxTracer) nra.Tx {
+		createTx: func(transactionName, url string, tracer newrelic.TxTracer) newrelic.Tx {
 			if tt.expectedTransactionName != transactionName {
 				t.Fatalf("Transaction mismatch expected: %v got: %v", tt.expectedTransactionName, transactionName)
 			}

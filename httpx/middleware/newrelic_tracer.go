@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/remind101/nra"
+	"github.com/remind101/newrelic"
 	"github.com/remind101/pkg/httpx"
 	"golang.org/x/net/context"
 )
 
 type NewRelicTracer struct {
 	handler  httpx.Handler
-	tracer   nra.TxTracer
+	tracer   newrelic.TxTracer
 	router   *httpx.Router
-	createTx func(string, string, nra.TxTracer) nra.Tx
+	createTx func(string, string, newrelic.TxTracer) newrelic.Tx
 }
 
-func NewRelicTracing(h httpx.Handler, router *httpx.Router, tracer nra.TxTracer) *NewRelicTracer {
+func NewRelicTracing(h httpx.Handler, router *httpx.Router, tracer newrelic.TxTracer) *NewRelicTracer {
 	return &NewRelicTracer{h, tracer, router, createTx}
 }
 
@@ -25,7 +25,7 @@ func (h *NewRelicTracer) ServeHTTPContext(ctx context.Context, w http.ResponseWr
 	txName := fmt.Sprintf("%s %s", r.Method, path)
 
 	tx := h.createTx(txName, r.URL.String(), h.tracer)
-	ctx = nra.WithTx(ctx, tx)
+	ctx = newrelic.WithTx(ctx, tx)
 
 	tx.Start()
 	defer tx.End()
@@ -48,6 +48,6 @@ func templatePath(router *httpx.Router, r *http.Request) string {
 	return tpl
 }
 
-func createTx(name, url string, tracer nra.TxTracer) nra.Tx {
-	return nra.NewRequestTx(name, url, tracer)
+func createTx(name, url string, tracer newrelic.TxTracer) newrelic.Tx {
+	return newrelic.NewRequestTx(name, url, tracer)
 }
