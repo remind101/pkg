@@ -143,22 +143,27 @@ func (t *mockTx) End() error {
 	return args.Error(0)
 }
 
-func (t *mockTx) StartGeneric(name string) {
+func (t *mockTx) StartGeneric(name string) error {
 	t.Called(name)
-	return
+	return nil
 }
 
-func (t *mockTx) StartDatastore(table, operation, sql, rollupName string) {
+func (t *mockTx) StartDatastore(table, operation, sql, rollupName string) error {
 	t.Called(table, operation, sql, rollupName)
-	return
+	return nil
 }
 
-func (t *mockTx) StartExternal(host, name string) {
+func (t *mockTx) StartExternal(host, name string) error {
 	t.Called(host, name)
-	return
+	return nil
 }
 
 func (t *mockTx) EndSegment() error {
+	args := t.Called()
+	return args.Error(0)
+}
+
+func (t *mockTx) ReportError(exceptionType, errorMessage, stackTrace, stackDelim string) error {
 	args := t.Called()
 	return args.Error(0)
 }
