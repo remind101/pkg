@@ -49,5 +49,7 @@ func templatePath(router *httpx.Router, r *http.Request) string {
 }
 
 func createTx(name, url string, tracer newrelic.TxTracer) newrelic.Tx {
-	return newrelic.NewRequestTx(name, url, tracer)
+	t := newrelic.NewRequestTx(name, url)
+	t.Tracer = tracer
+	return t
 }
