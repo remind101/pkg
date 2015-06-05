@@ -105,7 +105,7 @@ func NewReport(err error) *Report {
 				}
 
 				h := strings.Replace(strings.ToUpper(header), "-", "_", -1)
-				r.Request.CgiData["HTTP_"+h] = values
+				r.Request.CgiData["HTTP_"+h] = strings.Join(values, ", ")
 			}
 
 			r.Request.CgiData["REQUEST_METHOD"] = e.Request.Method
