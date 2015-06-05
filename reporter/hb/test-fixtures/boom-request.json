@@ -19,12 +19,8 @@
     "params": {},
     "session": {},
     "cgi_data": {
-      "HTTP_CONTENT_TYPE": [
-        "application/json"
-      ],
-      "HTTP_X_FORWARDED_FOR": [
-        "127.0.0.1"
-      ],
+      "HTTP_CONTENT_TYPE": "application/json",
+      "HTTP_X_FORWARDED_FOR": "127.0.0.1",
       "REQUEST_METHOD": "GET"
     },
     "context": {
