@@ -46,6 +46,7 @@ func main() {
 	m.HandleFunc("/ok", ok).Methods("GET")
 	m.HandleFunc("/bad", bad).Methods("GET")
 	m.HandleFunc("/boom", boom).Methods("GET")
+	m.Handle("/auth", middleware.BasicAuth(httpx.HandlerFunc(ok), "user", "pass", "realm")).Methods("GET")
 
 	var h httpx.Handler
 
