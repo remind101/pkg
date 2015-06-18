@@ -10,6 +10,7 @@ import (
 	"github.com/remind101/pkg/httpx/middleware"
 	"github.com/remind101/pkg/logger"
 	"github.com/remind101/pkg/reporter"
+	"github.com/remind101/pkg/retry"
 	"golang.org/x/net/context"
 )
 
@@ -83,10 +84,12 @@ func ip(ctx context.Context) (string, error) {
 	}
 	req.Header.Set("X-Request-ID", httpx.RequestID(ctx))
 
-	resp, err := http.DefaultClient.Do(req)
+	retrier := retry.NewRetrier("ip", retry.DefaultBackOffOpts, func(err error) bool { return true })
+	val, err := retrier.Retry(func() (interface{}, error) { return http.DefaultClient.Do(req) })
 	if err != nil {
 		return "", err
 	}
+	resp := val.(*http.Response)
 	defer resp.Body.Close()
 
 	raw, err := ioutil.ReadAll(resp.Body)
