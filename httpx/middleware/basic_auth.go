@@ -2,9 +2,9 @@ package middleware
 
 import (
 	"encoding/base64"
+	"fmt"
 	"net/http"
 	"strings"
-	"fmt"
 
 	"github.com/remind101/pkg/httpx"
 	"golang.org/x/net/context"
@@ -12,7 +12,7 @@ import (
 
 type BasicAuther struct {
 	User, Pass string
-	Realm string
+	Realm      string
 
 	// The handler that will be called if the request is authorized.
 	Handler httpx.Handler
@@ -41,7 +41,7 @@ func (a *BasicAuther) authenticated(r *http.Request) bool {
 }
 
 func DefaultUnauthorizedHandler(realm string) httpx.HandlerFunc {
-	return httpx.HandlerFunc(func (ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	return httpx.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 		w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Basic realm=%q`, realm))
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return nil

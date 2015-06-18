@@ -8,6 +8,7 @@ package pkg is a collection of Go packages that provide a layer of convenience o
 * **[logger](./logger)**: Defines a context aware structured logger.
 * **[reporter](./reporter)**: Defines a general abstraction for error reporting, with implementations for honeybadger.
 * **[metrics](./metrics)**: TODO
+* **[retry](./retry)**: Retry function calls with exponential backoff
 
 ## Usage
 
