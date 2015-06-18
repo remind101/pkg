@@ -57,8 +57,8 @@ func TestRetriesUntilMaxElapsedTimeAndCallsNotifyGaveUp(t *testing.T) {
 	if err != want {
 		t.Fatalf("Expected %v, got %v", err, want)
 	}
-	if counter.Count() <= 10 {
-		t.Fatalf("Expected %v > 10", counter.Count())
+	if counter.Count() < 2 {
+		t.Fatalf("Expected %v >= 2", counter.Count())
 	}
 	if notifyGaveUpCalled != 1 {
 		t.Fatalf("Expected notifygaveup to have been called")
