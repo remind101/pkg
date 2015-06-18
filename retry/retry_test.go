@@ -4,10 +4,8 @@ import (
 	"errors"
 	"reflect"
 	"sync"
+	"testing"
 	"time"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
 
 type MyError struct{}
@@ -31,81 +29,89 @@ func (c *Counter) Count() int {
 	return c.count
 }
 
-var _ = Describe("Retrier", func() {
-	var backOffOpts *BackOffOpts
-	var counter *Counter
+var alwaysRetry = func(error) bool { return true }
+var neverRetry = func(error) bool { return false }
 
-	BeforeEach(func() {
-		backOffOpts = &BackOffOpts{
-			InitialInterval: 1 * time.Nanosecond,
-			MaxInterval:     5 * time.Nanosecond,
-			MaxElapsedTime:  250 * time.Microsecond}
-		counter = &Counter{}
+func createRetrier(shouldRetry func(error) bool) (*Retrier, *Counter) {
+	backOffOpts := &BackOffOpts{
+		InitialInterval: 1 * time.Nanosecond,
+		MaxInterval:     5 * time.Nanosecond,
+		MaxElapsedTime:  250 * time.Microsecond}
+	counter := &Counter{}
+
+	return NewRetrier("Retrier", backOffOpts, shouldRetry), counter
+}
+
+func TestRetriesUntilMaxElapsedTimeAndCallsNotifyGaveUp(t *testing.T) {
+	retrier, counter := createRetrier(alwaysRetry)
+
+	notifyGaveUpCalled := 0
+	retrier.AddNotifyGaveUp(func(*RetryEvent) { notifyGaveUpCalled++ })
+
+	_, err := retrier.Retry(func() (interface{}, error) {
+		counter.Incr()
+		return 0, &MyError{}
 	})
 
-	It("keeps retrying until MaxElapsedTime and calls NotifyGaveUp", func() {
-		retrier := NewRetrier("Retrier", backOffOpts, func(error) bool {
-			return true
-		})
+	want := &MyError{}
+	if err != want {
+		t.Fatalf("Expected %v, got %v", err, want)
+	}
+	if counter.Count() <= 10 {
+		t.Fatalf("Expected %v > 10", counter.Count())
+	}
+	if notifyGaveUpCalled != 1 {
+		t.Fatalf("Expected notifygaveup to have been called")
+	}
+}
 
-		notifyGaveUpCalled := 0
-		retrier.AddNotifyGaveUp(func(*RetryEvent) { notifyGaveUpCalled++ })
+func TestRetriesUntilSuccessfulCallingNotifyRetryOnEachRetry(t *testing.T) {
+	retrier, counter := createRetrier(alwaysRetry)
 
-		_, err := retrier.Retry(func() (interface{}, error) {
-			counter.Incr()
+	notifyRetryCalled := 0
+	retrier.AddNotifyRetry(func(*RetryEvent) { notifyRetryCalled++ })
+
+	iVal, err := retrier.Retry(func() (interface{}, error) {
+		counter.Incr()
+		if counter.Count() < 5 {
 			return 0, &MyError{}
-		})
-
-		Expect(err).To(Equal(&MyError{}))
-
-		Expect(counter.Count()).To(BeNumerically(">", 10))
-		Expect(notifyGaveUpCalled).To(Equal(1))
+		} else {
+			return 123, nil
+		}
 	})
 
-	It("retries until successful, calling NotifyRetry on each retry", func() {
-		retrier := NewRetrier("Retrier", backOffOpts, func(error) bool {
-			return true
-		})
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
 
-		notifyRetryCalled := 0
-		retrier.AddNotifyRetry(func(*RetryEvent) { notifyRetryCalled++ })
+	val := iVal.(int)
 
-		iVal, err := retrier.Retry(func() (interface{}, error) {
-			counter.Incr()
-			if counter.Count() < 5 {
-				return 0, &MyError{}
-			} else {
-				return 123, nil
-			}
-		})
-		Expect(err).NotTo(HaveOccurred())
+	// We retried 4 times, for a total of 5 tries.
+	if counter.Count() != 5 && val != 123 && notifyRetryCalled != 4 {
+		t.Fatalf("Unexpected Counter: %v, val %v, notifyRetryCalled: %v", counter.Count(), val, notifyRetryCalled)
+	}
+}
 
-		val := iVal.(int)
-		Expect(counter.Count()).To(Equal(5))
-		Expect(val).To(Equal(123))
-
-		// We retried 4 times, for a total of 5 tries.
-		Expect(notifyRetryCalled).To(Equal(4))
+func TestReturnsTheErrorForNonRetryableErrors(t *testing.T) {
+	retrier, _ := createRetrier(neverRetry)
+	myError := errors.New("myError")
+	_, err := retrier.Retry(func() (interface{}, error) {
+		return nil, myError
 	})
+	if err != myError {
+		t.Fatalf("Expected to receive: %v, got %v", myError, err)
+	}
+}
 
-	It("returns the error when there's a non-retryable error", func() {
-		retrier := NewRetrier("Retrier", backOffOpts, func(error) bool {
-			return false
-		})
-		myError := errors.New("myError")
-		_, err := retrier.Retry(func() (interface{}, error) {
-			return nil, myError
-		})
-		Expect(err).To(Equal(myError))
-	})
-})
-
-var _ = Describe("RetryWhenErrorTypeMatches", func() {
+func TestRetryWhenErrorTypeMatches(t *testing.T) {
 	var MyErrorType = reflect.TypeOf(&MyError{})
 
-	It("returns true when an error matches an expected type", func() {
-		shouldRetryFunc := RetryWhenErrorTypeMatches([]reflect.Type{MyErrorType})
-		Expect(shouldRetryFunc(&MyError{})).To(BeTrue())
-		Expect(shouldRetryFunc(errors.New("hi"))).To(BeFalse())
-	})
-})
+	shouldRetryFunc := RetryWhenErrorTypeMatches([]reflect.Type{MyErrorType})
+
+	if got := shouldRetryFunc(&MyError{}); got != true {
+		t.Fatalf("Expected true")
+	}
+	if got := shouldRetryFunc(errors.New("hi")); got != false {
+		t.Fatalf("Expected false")
+	}
+}
