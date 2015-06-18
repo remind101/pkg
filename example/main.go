@@ -84,7 +84,7 @@ func ip(ctx context.Context) (string, error) {
 	}
 	req.Header.Set("X-Request-ID", httpx.RequestID(ctx))
 
-	retrier := retry.NewRetrier("ip", retry.DefaultBackOffOpts, func(err error) bool { return true })
+	retrier := retry.NewRetrier("ip", retry.DefaultBackOffOpts, retry.RetryOnAnyError)
 	val, err := retrier.Retry(func() (interface{}, error) { return http.DefaultClient.Do(req) })
 	if err != nil {
 		return "", err

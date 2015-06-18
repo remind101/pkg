@@ -29,9 +29,6 @@ func (c *Counter) Count() int {
 	return c.count
 }
 
-var alwaysRetry = func(error) bool { return true }
-var neverRetry = func(error) bool { return false }
-
 func createRetrier(shouldRetry func(error) bool) (*Retrier, *Counter) {
 	backOffOpts := &BackOffOpts{
 		InitialInterval: 1 * time.Nanosecond,
@@ -43,7 +40,7 @@ func createRetrier(shouldRetry func(error) bool) (*Retrier, *Counter) {
 }
 
 func TestRetriesUntilMaxElapsedTimeAndCallsNotifyGaveUp(t *testing.T) {
-	retrier, counter := createRetrier(alwaysRetry)
+	retrier, counter := createRetrier(RetryOnAnyError)
 
 	notifyGaveUpCalled := 0
 	retrier.AddNotifyGaveUp(func(*RetryEvent) { notifyGaveUpCalled++ })
@@ -66,7 +63,7 @@ func TestRetriesUntilMaxElapsedTimeAndCallsNotifyGaveUp(t *testing.T) {
 }
 
 func TestRetriesUntilSuccessfulCallingNotifyRetryOnEachRetry(t *testing.T) {
-	retrier, counter := createRetrier(alwaysRetry)
+	retrier, counter := createRetrier(RetryOnAnyError)
 
 	notifyRetryCalled := 0
 	retrier.AddNotifyRetry(func(*RetryEvent) { notifyRetryCalled++ })
@@ -93,6 +90,7 @@ func TestRetriesUntilSuccessfulCallingNotifyRetryOnEachRetry(t *testing.T) {
 }
 
 func TestReturnsTheErrorForNonRetryableErrors(t *testing.T) {
+	var neverRetry = func(error) bool { return false }
 	retrier, _ := createRetrier(neverRetry)
 	myError := errors.New("myError")
 	_, err := retrier.Retry(func() (interface{}, error) {

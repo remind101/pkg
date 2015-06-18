@@ -19,6 +19,8 @@ var DefaultBackOffOpts *BackOffOpts = &BackOffOpts{
 	MaxInterval:     3 * time.Second,
 	MaxElapsedTime:  10 * time.Second}
 
+var RetryOnAnyError = func(error) bool { return true }
+
 type RetryNotifier func(*RetryEvent)
 
 type Retrier struct {
