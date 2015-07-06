@@ -62,12 +62,12 @@ func (r *Retrier) Retry(f func() (interface{}, error)) (interface{}, error) {
 		}
 
 		if !r.shouldRetryFunc(err) {
-			return nil, err
+			return val, err
 		}
 
 		if next = b.NextBackOff(); next == backoff.Stop {
 			r.notifyGaveUp(err)
-			return nil, err
+			return val, err
 		}
 
 		time.Sleep(next)

@@ -89,13 +89,17 @@ func TestRetriesUntilSuccessfulCallingNotifyRetryOnEachRetry(t *testing.T) {
 	}
 }
 
-func TestReturnsTheErrorForNonRetryableErrors(t *testing.T) {
+func TestReturnsResultAndErrorForNonRetryableErrors(t *testing.T) {
 	var neverRetry = func(error) bool { return false }
 	retrier, _ := createRetrier(neverRetry)
 	myError := errors.New("myError")
-	_, err := retrier.Retry(func() (interface{}, error) {
-		return nil, myError
+	myVal := "my value so far"
+	got, err := retrier.Retry(func() (interface{}, error) {
+		return myVal, myError
 	})
+	if got, ok := got.(string); !ok || got != myVal {
+		t.Fatalf("Expected to receive %#v, got %#v", myVal, got)
+	}
 	if err != myError {
 		t.Fatalf("Expected to receive: %v, got %v", myError, err)
 	}
