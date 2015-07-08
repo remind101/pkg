@@ -7,9 +7,11 @@ import (
 	"golang.org/x/net/context"
 )
 
+type ErrorHandlerFunc func(context.Context, error, http.ResponseWriter, *http.Request)
+
 // DefaultErrorHandler is an error handler that will respond with the error
 // message and a 500 status.
-var DefaultErrorHandler = func(err error, w http.ResponseWriter, r *http.Request) {
+var DefaultErrorHandler = func(ctx context.Context, err error, w http.ResponseWriter, r *http.Request) {
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 
@@ -17,7 +19,7 @@ var DefaultErrorHandler = func(err error, w http.ResponseWriter, r *http.Request
 type Error struct {
 	// ErrorHandler is a function that will be called when a handler returns
 	// an error.
-	ErrorHandler func(error, http.ResponseWriter, *http.Request)
+	ErrorHandler ErrorHandlerFunc
 
 	// Handler is the wrapped httpx.Handler that will be called.
 	handler httpx.Handler
@@ -30,7 +32,7 @@ func NewError(h httpx.Handler) *Error {
 }
 
 // HandleError returns a new Error middleware that uses f as the ErrorHandler.
-func HandleError(h httpx.Handler, f func(error, http.ResponseWriter, *http.Request)) *Error {
+func HandleError(h httpx.Handler, f ErrorHandlerFunc) *Error {
 	e := NewError(h)
 	e.ErrorHandler = f
 	return e
@@ -46,7 +48,7 @@ func (h *Error) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r *
 			f = DefaultErrorHandler
 		}
 
-		f(err, w, r)
+		f(ctx, err, w, r)
 	}
 
 	return nil

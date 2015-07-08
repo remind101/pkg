@@ -34,7 +34,7 @@ func boom(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	panic("boom")
 }
 
-func errorHandler(err error, w http.ResponseWriter, r *http.Request) {
+func errorHandler(ctx context.Context, err error, w http.ResponseWriter, r *http.Request) {
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 
