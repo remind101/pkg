@@ -40,7 +40,7 @@ func TestErrorWithHandler(t *testing.T) {
 	var called bool
 
 	h := &Error{
-		ErrorHandler: func(err error, w http.ResponseWriter, r *http.Request) {
+		ErrorHandler: func(ctx context.Context, err error, w http.ResponseWriter, r *http.Request) {
 			called = true
 		},
 		handler: httpx.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
