@@ -61,9 +61,6 @@ func main() {
 	// prefixed with the request id.
 	h = middleware.LogTo(h, middleware.StdoutLogger)
 
-	// Adds the request id to the context.
-	h = middleware.ExtractRequestID(h)
-
 	http.ListenAndServe(":8080", middleware.BackgroundContext(h))
 }
 
