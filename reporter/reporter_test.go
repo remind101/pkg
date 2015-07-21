@@ -39,3 +39,29 @@ func TestReport(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestMonitor(t *testing.T) {
+	ensureRepanicked := func() {
+		if v := recover(); v == nil {
+			t.Errorf("Must have panicked after reporting!")
+		}
+	}
+	var reportedError error
+	r := ReporterFunc(func(ctx context.Context, err error) error {
+		reportedError = err
+		return nil
+	})
+	ctx := WithReporter(context.Background(), r)
+
+	done := make(chan interface{})
+	go func() {
+		defer close(done)
+		defer ensureRepanicked()
+		defer Monitor(ctx)
+		panic("oh noes!")
+	}()
+	<-done
+	if reportedError == nil || reportedError.Error() != "panic: oh noes!" {
+		t.Errorf("expected panic 'oh noes!' to be reported, got %#v", reportedError)
+	}
+}
