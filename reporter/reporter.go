@@ -3,6 +3,7 @@
 package reporter
 
 import (
+	"fmt"
 	"net/http"
 	"runtime"
 	"strings"
@@ -75,6 +76,28 @@ func Report(ctx context.Context, err error) error {
 	}
 
 	return nil
+}
+
+// Monitors and reports panics. Useful in goroutines.
+// Example:
+//   ctx := reporter.WithReporter(context.Background(), hb2.NewReporter(hb2.Config{}))
+//   ...
+//   go func(ctx context.Context) {
+//     defer reporter.Monitor(ctx)
+//     ...
+//     panic("oh noes") // will report, then crash.
+//   }(ctx)
+func Monitor(ctx context.Context) {
+	if v := recover(); v != nil {
+		var err error
+		if e, ok := v.(error); ok {
+			err = e
+		} else {
+			err = fmt.Errorf("panic: %v", v)
+		}
+		Report(ctx, err)
+		panic(err)
+	}
 }
 
 // A line from the backtrace.
