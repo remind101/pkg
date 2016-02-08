@@ -54,9 +54,11 @@ func (r *Retrier) Retry(f func() (interface{}, error)) (interface{}, error) {
 	var err error
 	var next time.Duration
 
+	numTries := 0
 	b := r.newBackOff()
 	b.Reset()
 	for {
+		numTries++
 		if val, err = f(); err == nil {
 			return val, nil
 		}
@@ -66,18 +68,19 @@ func (r *Retrier) Retry(f func() (interface{}, error)) (interface{}, error) {
 		}
 
 		if next = b.NextBackOff(); next == backoff.Stop {
-			r.notifyGaveUp(err)
+			r.notifyGaveUp(err, numTries)
 			return val, err
 		}
 
 		time.Sleep(next)
-		r.notifyRetry(err)
+		r.notifyRetry(err, numTries)
 	}
 }
 
 type RetryEvent struct {
 	Retrier *Retrier
 	Err     error
+	NumTries int
 }
 
 func (r *Retrier) AddNotifyRetry(f RetryNotifier) {
@@ -88,28 +91,28 @@ func (r *Retrier) AddNotifyGaveUp(f RetryNotifier) {
 	r.notifyGaveUpFuncs = append(r.notifyGaveUpFuncs, f)
 }
 
-func (r *Retrier) notifyGaveUp(err error) {
-	retryEvent := &RetryEvent{Retrier: r, Err: err}
+func (r *Retrier) notifyGaveUp(err error, numTries int) {
+	retryEvent := &RetryEvent{Retrier: r, Err: err, NumTries: numTries}
 	for _, notifyGaveUpFunc := range r.notifyGaveUpFuncs {
 		notifyGaveUpFunc(retryEvent)
 	}
 }
 
-func (r *Retrier) notifyRetry(err error) {
-	retryEvent := &RetryEvent{Retrier: r, Err: err}
+func (r *Retrier) notifyRetry(err error, numTries int) {
+	retryEvent := &RetryEvent{Retrier: r, Err: err, NumTries: numTries}
 	for _, notifyRetryFunc := range r.notifyRetryFuncs {
 		notifyRetryFunc(retryEvent)
 	}
 }
 
 func logRetry(re *RetryEvent) {
-	log.Printf("Retrying error=%s count#retry.%s.retry_count=1\n",
-		re.Err.Error(), re.Retrier.Name)
+	log.Printf("Retrying after %d tries: error=%s count#retry.%s.retry_count=1\n",
+		re.Err.Error(), re.Retrier.Name, re.NumTries)
 }
 
 func logGaveUp(re *RetryEvent) {
-	log.Printf("Retrying error=%s count#retry.%s.gave_up_count=1\n",
-		re.Err.Error(), re.Retrier.Name)
+	log.Printf("Giving up after %d tries: error=%s count#retry.%s.gave_up_count=1\n",
+		re.Err.Error(), re.Retrier.Name, re.NumTries)
 }
 
 func RetryWhenErrorTypeMatches(errorTypes []reflect.Type) func(error) bool {
