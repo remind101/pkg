@@ -107,12 +107,12 @@ func (r *Retrier) notifyRetry(err error, numTries int) {
 
 func logRetry(re *RetryEvent) {
 	log.Printf("Retrying after %d tries: error=%s count#retry.%s.retry_count=1\n",
-		re.Err.Error(), re.Retrier.Name, re.NumTries)
+		re.NumTries, re.Err.Error(), re.Retrier.Name)
 }
 
 func logGaveUp(re *RetryEvent) {
 	log.Printf("Giving up after %d tries: error=%s count#retry.%s.gave_up_count=1\n",
-		re.Err.Error(), re.Retrier.Name, re.NumTries)
+		re.NumTries, re.Err.Error(), re.Retrier.Name)
 }
 
 func RetryWhenErrorTypeMatches(errorTypes []reflect.Type) func(error) bool {
