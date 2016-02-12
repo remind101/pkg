@@ -33,7 +33,7 @@ func createRetrier(shouldRetry func(error) bool) (*Retrier, *Counter) {
 	backOffOpts := &BackOffOpts{
 		InitialInterval: 1 * time.Nanosecond,
 		MaxInterval:     5 * time.Nanosecond,
-		MaxElapsedTime:  250 * time.Microsecond}
+		MaxElapsedTime:  250 * time.Millisecond}
 	counter := &Counter{}
 
 	return NewRetrier("Retrier", backOffOpts, shouldRetry), counter
