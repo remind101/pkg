@@ -152,9 +152,9 @@ func TestCredentialRemoval(t *testing.T) {
 	baseURL, _ := url.Parse("http://user:pass@base_url.com")
 	path := "/path/"
 
-	expectedUrl := "http://base_url.com/path/"
-	actualUrl := ParseURL(baseURL, path)
-	if actualUrl != expectedUrl {
-		t.Fatalf("Expected ParseURL to return %s but got %s", expectedUrl, actualUrl)
+	expectedURL := "http://base_url.com/path/"
+	actualURL := ParseURL(baseURL, path)
+	if actualURL != expectedURL {
+		t.Fatalf("Expected ParseURL to return %s but got %s", expectedURL, actualURL)
 	}
 }

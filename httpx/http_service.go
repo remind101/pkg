@@ -175,12 +175,12 @@ func NewJSONRequest(method, path string, v interface{}) (*http.Request, error) {
 }
 
 func ParseURL(baseURL *url.URL, path string) string {
-	urlString := UrlWithoutCreds(*baseURL)
-	return strings.TrimRight(urlString, "/") + path
+	URLString := URLWithoutCreds(*baseURL)
+	return strings.TrimRight(URLString, "/") + path
 }
 
 // Shows the URL without information about the current username and password
-func UrlWithoutCreds(u url.URL) string {
+func URLWithoutCreds(u url.URL) string {
 	u.User = nil
 	return u.String()
 }
