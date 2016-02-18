@@ -2,13 +2,10 @@ package httpx
 
 import (
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"testing"
-
-	"github.com/remind101/pkg/retry"
 
 	"golang.org/x/net/context"
 )
@@ -31,13 +28,8 @@ func (m *MockTransport) CancelRequest(req *http.Request) {
 
 func TestRequestIDTransport(t *testing.T) {
 	mockTransport := &MockTransport{responses: make(chan *http.Response)}
-	client := &Client{
-		Transport: &RequestIDTransport{
-			Transport: &Transport{Client: &http.Client{
-				Transport: mockTransport,
-			}},
-		},
-	}
+	mockClient := &http.Client{Transport: mockTransport}
+	client := NewServiceClient("service_name", mockClient)
 
 	go func() {
 		mockTransport.responses <- &http.Response{StatusCode: 200}
@@ -60,19 +52,8 @@ func TestRequestIDTransport(t *testing.T) {
 
 func TestRetryTransport(t *testing.T) {
 	mockTransport := &MockTransport{responses: make(chan *http.Response)}
-	retrier := retry.NewErrorTypeRetrier("service_name",
-		retry.DefaultBackOffOpts,
-		(*net.OpError)(nil),
-		(*RetryableHTTPError)(nil))
-
-	client := &Client{
-		Transport: &RetryTransport{
-			Retrier: retrier,
-			Transport: &Transport{Client: &http.Client{
-				Transport: mockTransport,
-			}},
-		},
-	}
+	mockClient := &http.Client{Transport: mockTransport}
+	client := NewServiceClient("service_name", mockClient)
 
 	// Generate responses for mockTransport to return in response to Do() calls
 	go func() {
@@ -86,6 +67,10 @@ func TestRetryTransport(t *testing.T) {
 
 		// Test 3: non-retryable error
 		mockTransport.responses <- &http.Response{StatusCode: 400}
+
+		// Test 4: retryable error not retried because of non-retryable method
+		mockTransport.responses <- &http.Response{StatusCode: 500}
+		mockTransport.responses <- &http.Response{StatusCode: 200}
 	}()
 
 	// Test 1: 200 returned immediately
@@ -99,7 +84,7 @@ func TestRetryTransport(t *testing.T) {
 	}
 
 	// Test 2: should retry after the two 500 calls and eventually return 200
-	req, _ = http.NewRequest("POST", "/path", nil)
+	req, _ = http.NewRequest("GET", "/path", nil)
 	resp, err = client.Do(context.Background(), req)
 	if err != nil {
 		t.Fatal("Expected RoundTrip to return without error")
@@ -109,7 +94,7 @@ func TestRetryTransport(t *testing.T) {
 	}
 
 	// Test 3: should not retry after non-retryable error 400 and should return the error instead
-	req, _ = http.NewRequest("DELETE", "/another/path", nil)
+	req, _ = http.NewRequest("GET", "/another/path", nil)
 	resp, err = client.Do(context.Background(), req)
 	if resp != nil {
 		t.Fatal("Status 400 should have resulted in nil response")
@@ -121,6 +106,17 @@ func TestRetryTransport(t *testing.T) {
 	} else {
 		t.Fatal("Response 400 returned with an error, but not of the expected type HTTPError")
 	}
+
+	// Test 4: should not retry despite retryable error because the request method is not in MethodsToRetry
+	req, _ = http.NewRequest("DELETE", "/path/to/delete", nil)
+	resp, err = client.Do(context.Background(), req)
+	if err != nil {
+		t.Fatalf("Expected RoundTrip to return without error")
+	}
+	if resp.StatusCode != 500 {
+		t.Fatalf("For DELETE request, code 500 should have been returned with no retry")
+	}
+
 }
 
 func TestJSONRequests(t *testing.T) {

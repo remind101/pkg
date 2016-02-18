@@ -25,6 +25,23 @@ type Client struct {
 	Transport RoundTripper
 }
 
+var DefaultHTTPTransport = &http.Transport{
+	Proxy: http.ProxyFromEnvironment,
+	Dial: (&net.Dialer{
+		Timeout:   15 * time.Second,
+		KeepAlive: 90 * time.Second,
+	}).Dial,
+	TLSHandshakeTimeout: 3 * time.Second,
+}
+
+var DefaultHTTPClient = &http.Client{
+	Transport: DefaultHTTPTransport,
+}
+
+func NewDefaultServiceClient(serviceName string) *Client {
+	return NewServiceClient(serviceName, nil)
+}
+
 // NewClient returns a new Client instance that will use the given http.Client
 // to perform round trips
 func NewClient(c *http.Client) *Client {
@@ -36,8 +53,13 @@ func NewClient(c *http.Client) *Client {
 //      1. Request ids will be added to outgoing requests within the
 //         X-Request-Id header.
 //      2. Any 500 errors will be retried.
-//      3. Connections will timeout after 15 seconds.
-func NewServiceClient(serviceName string) *Client {
+//
+// The optional *http.Client parameter can be used to override the default client.
+func NewServiceClient(serviceName string, c *http.Client) *Client {
+	if c == nil {
+		c = DefaultHTTPClient
+	}
+
 	retrier := retry.NewErrorTypeRetrier(serviceName,
 		retry.DefaultBackOffOpts,
 		(*net.OpError)(nil),
@@ -47,16 +69,8 @@ func NewServiceClient(serviceName string) *Client {
 		Transport: &RequestIDTransport{
 			Transport: &RetryTransport{
 				Retrier: retrier,
-				Transport: &Transport{Client: &http.Client{
-					Transport: &http.Transport{
-						Proxy: http.ProxyFromEnvironment,
-						Dial: (&net.Dialer{
-							Timeout:   15 * time.Second,
-							KeepAlive: 90 * time.Second,
-						}).Dial,
-						TLSHandshakeTimeout: 3 * time.Second,
-					},
-				}},
+				MethodsToRetry: []string{"", "GET", "HEAD"},
+				Transport: &Transport{Client: c},
 			},
 		},
 	}
@@ -113,10 +127,22 @@ func (t *Transport) RoundTrip(ctx context.Context, req *http.Request) (*http.Res
 // retries requests.
 type RetryTransport struct {
 	*retry.Retrier
+	MethodsToRetry []string
 	Transport RoundTripper
 }
 
 func (t *RetryTransport) RoundTrip(ctx context.Context, req *http.Request) (*http.Response, error) {
+	shouldRetry := false
+	for _,method := range t.MethodsToRetry {
+		if method == req.Method {
+			shouldRetry = true
+			break
+		}
+	}
+	if !shouldRetry {
+		return t.Transport.RoundTrip(ctx, req)
+	}
+
 	resp, err := t.Retrier.Retry(func() (interface{}, error) {
 		resp, err := t.Transport.RoundTrip(ctx, req)
 		if err != nil {
