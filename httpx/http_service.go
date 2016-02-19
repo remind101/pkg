@@ -69,7 +69,11 @@ func NewServiceClient(serviceName string, c *http.Client) *Client {
 		Transport: &RequestIDTransport{
 			Transport: &RetryTransport{
 				Retrier: retrier,
-				MethodsToRetry: []string{"", "GET", "HEAD"},
+				MethodsToRetry: map[string]bool {
+					"": true,
+					"GET": true,
+					"HEAD": true,
+				},
 				Transport: &Transport{Client: c},
 			},
 		},
@@ -127,19 +131,12 @@ func (t *Transport) RoundTrip(ctx context.Context, req *http.Request) (*http.Res
 // retries requests.
 type RetryTransport struct {
 	*retry.Retrier
-	MethodsToRetry []string
+	MethodsToRetry map[string]bool
 	Transport RoundTripper
 }
 
 func (t *RetryTransport) RoundTrip(ctx context.Context, req *http.Request) (*http.Response, error) {
-	shouldRetry := false
-	for _,method := range t.MethodsToRetry {
-		if method == req.Method {
-			shouldRetry = true
-			break
-		}
-	}
-	if !shouldRetry {
+	if !t.MethodsToRetry[req.Method] {
 		return t.Transport.RoundTrip(ctx, req)
 	}
 
@@ -152,7 +149,8 @@ func (t *RetryTransport) RoundTrip(ctx context.Context, req *http.Request) (*htt
 		if resp.StatusCode >= 500 {
 			return nil, &RetryableHTTPError{Path: req.URL.String(), StatusCode: resp.StatusCode}
 		} else if resp.StatusCode >= 300 {
-			return nil, &HTTPError{Path: req.URL.String(), StatusCode: resp.StatusCode}
+			// There will be no retry. Just return the response that was given.
+			return resp, nil
 		}
 
 		return resp, nil

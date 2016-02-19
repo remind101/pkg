@@ -93,18 +93,14 @@ func TestRetryTransport(t *testing.T) {
 		t.Fatalf("Expected the 500 and 200 test sequence to return with the 200 response but got %d", resp.StatusCode)
 	}
 
-	// Test 3: should not retry after non-retryable error 400 and should return the error instead
+	// Test 3: should not retry after non-retryable error 400
 	req, _ = http.NewRequest("GET", "/another/path", nil)
 	resp, err = client.Do(context.Background(), req)
-	if resp != nil {
-		t.Fatal("Status 400 should have resulted in nil response")
+	if err != nil {
+		t.Fatal("Expected RoundTrip to return without error")
 	}
-	if err, ok := err.(*HTTPError); ok {
-		if err.StatusCode != 400 {
-			t.Fatalf("Expected error code 400 but got %d", err.StatusCode)
-		}
-	} else {
-		t.Fatal("Response 400 returned with an error, but not of the expected type HTTPError")
+	if resp.StatusCode != 400 {
+		t.Fatalf("Expected response code 400 but got %d", resp.StatusCode)
 	}
 
 	// Test 4: should not retry despite retryable error because the request method is not in MethodsToRetry
