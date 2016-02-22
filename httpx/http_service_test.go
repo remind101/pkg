@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"golang.org/x/net/context"
+	"github.com/remind101/pkg/retry"
 )
 
 // A fake http.RoundTripper that returns responses fed to it from a channel.
@@ -70,7 +71,6 @@ func TestRetryTransport(t *testing.T) {
 
 		// Test 4: retryable error not retried because of non-retryable method
 		mockTransport.responses <- &http.Response{StatusCode: 500}
-		mockTransport.responses <- &http.Response{StatusCode: 200}
 	}()
 
 	// Test 1: 200 returned immediately
@@ -113,6 +113,36 @@ func TestRetryTransport(t *testing.T) {
 		t.Fatalf("For DELETE request, code 500 should have been returned with no retry")
 	}
 
+}
+
+func TestRetryableRequestNotRetried(t *testing.T) {
+	mockTransport := &MockTransport{responses: make(chan *http.Response)}
+	mockClient := &http.Client{Transport: mockTransport}
+
+	// Retrier with an empty list of errors to retry
+	retrier := retry.NewErrorTypeRetrier("service_name", retry.DefaultBackOffOpts)
+
+	client := &Client{
+		Transport: &RequestIDTransport{
+			Transport: NewRetryTransport(retrier, &Transport{Client: mockClient}),
+		},
+	}
+
+	go func() {
+		// Test 1: expect 500 to be returned and no retry to be made
+		mockTransport.responses <- &http.Response{StatusCode: 500}
+		mockTransport.responses <- &http.Response{StatusCode: 200}
+	}()
+
+	// Test 1: request is retryable but will not be retried
+	req, _ := http.NewRequest("GET", "/", nil)
+	resp, err := client.Do(context.Background(), req)
+	if err != nil {
+		t.Fatal("Expected non-retried RoundTrip not to return a RetryableHTTPError")
+	}
+	if resp.StatusCode != 500 {
+		t.Fatal("Expected a 500 response to be the final return value")
+	}
 }
 
 func TestJSONRequests(t *testing.T) {

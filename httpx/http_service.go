@@ -67,15 +67,7 @@ func NewServiceClient(serviceName string, c *http.Client) *Client {
 
 	return &Client{
 		Transport: &RequestIDTransport{
-			Transport: &RetryTransport{
-				Retrier: retrier,
-				MethodsToRetry: map[string]bool {
-					"": true,
-					"GET": true,
-					"HEAD": true,
-				},
-				Transport: &Transport{Client: c},
-			},
+			Transport: NewRetryTransport(retrier, &Transport{Client: c}),
 		},
 	}
 }
@@ -135,6 +127,20 @@ type RetryTransport struct {
 	Transport RoundTripper
 }
 
+// NewRetryTransport returns a RetryTransport that will retry idempotent HTTP
+// requests (GET/HEAD) using the given retrier.
+func NewRetryTransport(retrier *retry.Retrier, transport RoundTripper) *RetryTransport {
+	return &RetryTransport{
+		Retrier: retrier,
+		MethodsToRetry: map[string]bool{
+			"":     true, // http.Client treats empty methods the same as "GET"
+			"GET":  true,
+			"HEAD": true,
+		},
+		Transport: transport,
+	}
+}
+
 func (t *RetryTransport) RoundTrip(ctx context.Context, req *http.Request) (*http.Response, error) {
 	if !t.MethodsToRetry[req.Method] {
 		return t.Transport.RoundTrip(ctx, req)
@@ -147,10 +153,7 @@ func (t *RetryTransport) RoundTrip(ctx context.Context, req *http.Request) (*htt
 		}
 
 		if resp.StatusCode >= 500 {
-			return nil, &RetryableHTTPError{Path: req.URL.String(), StatusCode: resp.StatusCode}
-		} else if resp.StatusCode >= 300 {
-			// There will be no retry. Just return the response that was given.
-			return resp, nil
+			return resp, &RetryableHTTPError{Path: req.URL.String(), StatusCode: resp.StatusCode}
 		}
 
 		return resp, nil
@@ -159,7 +162,7 @@ func (t *RetryTransport) RoundTrip(ctx context.Context, req *http.Request) (*htt
 	if resp == nil {
 		return nil, err
 	} else if response, ok := resp.(*http.Response); ok {
-		return response, err
+		return response, nil
 	} else {
 		panic("Response is non-nil and not of an expected type")
 	}
