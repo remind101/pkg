@@ -73,6 +73,8 @@ func Report(ctx context.Context, err error) error {
 
 	if r, ok := FromContext(ctx); ok {
 		return r.Report(ctx, e)
+	} else {
+		return errors.New("No reporter in provided context.")
 	}
 
 	return nil
