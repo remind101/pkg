@@ -20,7 +20,7 @@ type Logger interface {
 	Crit(msg string, pairs ...interface{})
 }
 
-var fallbackLogger = New(log.New(os.Stdout, "[no-context]", log.LstdFlags))
+var DefaultLogger = New(log.New(os.Stdout, "[default] ", log.LstdFlags))
 
 // logger is an implementation of the Logger interface backed by the stdlib's
 // logging facility. This is a fairly naive implementation, and it's probably
@@ -122,7 +122,7 @@ func withLogger(ctx context.Context, fn func(l Logger)) {
 	if l, ok := FromContext(ctx); ok {
 		fn(l)
 	} else {
-		fn(fallbackLogger)
+		fn(DefaultLogger)
 	}
 }
 

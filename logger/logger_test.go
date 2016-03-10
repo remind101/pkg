@@ -48,10 +48,10 @@ func TestWithContextLogger(t *testing.T) {
 }
 
 func TestWithoutContextLogger(t *testing.T) {
-	origFallBackLogger := fallbackLogger
-	defer func() { fallbackLogger = origFallBackLogger }()
+	origFallBackLogger := DefaultLogger
+	defer func() { DefaultLogger = origFallBackLogger }()
 	b := new(bytes.Buffer)
-	fallbackLogger = New(log.New(b, "", 0))
+	DefaultLogger = New(log.New(b, "", 0))
 	Info(context.Background(), "test")
 	if got, want := b.String(), "test \n"; got != want {
 		t.Fatalf("Without Context Logger => %q; want %q", got, want)
