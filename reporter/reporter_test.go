@@ -40,6 +40,16 @@ func TestReport(t *testing.T) {
 	}
 }
 
+func TestReportWithNoReporterInContext(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Error("Expected panic due to context without reporter, got no panic")
+		}
+	}()
+	ctx := context.Background() // no reporter
+	Report(ctx, errBoom)
+}
+
 func TestMonitor(t *testing.T) {
 	ensureRepanicked := func() {
 		if v := recover(); v == nil {
