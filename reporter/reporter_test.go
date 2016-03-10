@@ -40,6 +40,13 @@ func TestReport(t *testing.T) {
 	}
 }
 
+func TestReportWithNoReporterInContext(t *testing.T) {
+	ctx := context.Background() // no reporter
+	if err := Report(ctx, errBoom); err == nil {
+		t.Error("Expected Report to return an error, got none")
+	}
+}
+
 func TestMonitor(t *testing.T) {
 	ensureRepanicked := func() {
 		if v := recover(); v == nil {

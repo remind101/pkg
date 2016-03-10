@@ -3,7 +3,7 @@
 package reporter
 
 import (
-  "errors"
+	"errors"
 	"fmt"
 	"net/http"
 	"runtime"
