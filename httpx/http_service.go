@@ -83,7 +83,7 @@ type Transport struct {
 	*http.Client
 }
 
-// A RoundTrip implementation that can handle both normal responses and cancellations.
+// TODO: add support for context.Context cancellations
 func (t *Transport) RoundTrip(ctx context.Context, req *http.Request) (*http.Response, error) {
 	return t.Client.Do(req)
 }
