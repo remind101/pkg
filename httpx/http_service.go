@@ -83,12 +83,6 @@ type Transport struct {
 	*http.Client
 }
 
-// ResponseError is a convenience struct representing a response-error pair.
-type ResponseError struct {
-	response *http.Response
-	err      error
-}
-
 // A RoundTrip implementation that can handle both normal responses and cancellations.
 func (t *Transport) RoundTrip(ctx context.Context, req *http.Request) (*http.Response, error) {
 	return t.Client.Do(req)
