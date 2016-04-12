@@ -83,40 +83,9 @@ type Transport struct {
 	*http.Client
 }
 
-// ResponseError is a convenience struct representing a response-error pair.
-type ResponseError struct {
-	response *http.Response
-	err      error
-}
-
-// A RoundTrip implementation that can handle both normal responses and cancellations.
+// TODO: add support for context.Context cancellations
 func (t *Transport) RoundTrip(ctx context.Context, req *http.Request) (*http.Response, error) {
-	var returnResp *http.Response
-	var returnErr error
-
-	// Run the HTTP request in a goroutine and pass the response by a channel.
-	tr := t.Client.Transport.(interface {
-		CancelRequest(*http.Request)
-	})
-	c := make(chan ResponseError, 1)
-
-	go func() {
-		resp, err := t.Client.Do(req)
-		re := ResponseError{response: resp, err: err}
-		c <- re
-	}()
-
-	select {
-	case <-ctx.Done():
-		tr.CancelRequest(req)
-		<-c
-		returnResp = nil
-		returnErr = ctx.Err()
-	case respError := <-c:
-		returnResp = respError.response
-		returnErr = respError.err
-	}
-	return returnResp, returnErr
+	return t.Client.Do(req)
 }
 
 // RetryTransport is an implementation of the RoundTripper interface that
@@ -124,7 +93,7 @@ func (t *Transport) RoundTrip(ctx context.Context, req *http.Request) (*http.Res
 type RetryTransport struct {
 	*retry.Retrier
 	MethodsToRetry map[string]bool
-	Transport RoundTripper
+	Transport      RoundTripper
 }
 
 // NewRetryTransport returns a RetryTransport that will retry idempotent HTTP
