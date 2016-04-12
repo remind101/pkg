@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/honeybadger-io/honeybadger-go"
+	"github.com/remind101/pkg/reporter/hb2/internal/honeybadger-go"
 	"github.com/remind101/pkg/reporter"
 	"golang.org/x/net/context"
 )

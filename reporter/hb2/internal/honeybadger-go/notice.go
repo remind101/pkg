@@ -7,9 +7,9 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/pborman/uuid"
-	"github.com/shirou/gopsutil/load"
-	"github.com/shirou/gopsutil/mem"
+	"github.com/remind101/pkg/reporter/hb2/internal/uuid"
+	"github.com/remind101/pkg/reporter/hb2/internal/gopsutil/load"
+	"github.com/remind101/pkg/reporter/hb2/internal/gopsutil/mem"
 )
 
 type hash map[string]interface{}

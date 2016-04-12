@@ -11,8 +11,8 @@ import (
 
 	"github.com/StackExchange/wmi"
 
-	"github.com/shirou/gopsutil/internal/common"
-	process "github.com/shirou/gopsutil/process"
+	"github.com/remind101/pkg/reporter/hb2/internal/gopsutil/internal/common"
+	process "github.com/remind101/pkg/reporter/hb2/internal/gopsutil/process"
 )
 
 var (

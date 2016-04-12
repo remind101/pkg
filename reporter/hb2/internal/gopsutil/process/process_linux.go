@@ -15,10 +15,10 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/shirou/gopsutil/cpu"
-	"github.com/shirou/gopsutil/host"
-	"github.com/shirou/gopsutil/internal/common"
-	"github.com/shirou/gopsutil/net"
+	"github.com/remind101/pkg/reporter/hb2/internal/gopsutil/cpu"
+	"github.com/remind101/pkg/reporter/hb2/internal/gopsutil/host"
+	"github.com/remind101/pkg/reporter/hb2/internal/gopsutil/internal/common"
+	"github.com/remind101/pkg/reporter/hb2/internal/gopsutil/net"
 )
 
 var ErrorNoChildren = errors.New("process does not have children")

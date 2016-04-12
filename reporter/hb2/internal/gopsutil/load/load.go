@@ -3,7 +3,7 @@ package load
 import (
 	"encoding/json"
 
-	"github.com/shirou/gopsutil/internal/common"
+	"github.com/remind101/pkg/reporter/hb2/internal/gopsutil/internal/common"
 )
 
 var invoke common.Invoker

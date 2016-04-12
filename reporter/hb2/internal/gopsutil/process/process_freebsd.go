@@ -8,9 +8,9 @@ import (
 	"strings"
 	"syscall"
 
-	cpu "github.com/shirou/gopsutil/cpu"
-	"github.com/shirou/gopsutil/internal/common"
-	net "github.com/shirou/gopsutil/net"
+	cpu "github.com/remind101/pkg/reporter/hb2/internal/gopsutil/cpu"
+	"github.com/remind101/pkg/reporter/hb2/internal/gopsutil/internal/common"
+	net "github.com/remind101/pkg/reporter/hb2/internal/gopsutil/net"
 )
 
 // MemoryInfoExStat is different between OSes

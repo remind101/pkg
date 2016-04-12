@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/pborman/uuid"
+	"github.com/remind101/pkg/reporter/hb2/internal/uuid"
 )
 
 var (

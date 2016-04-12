@@ -6,7 +6,7 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/shirou/gopsutil/internal/common"
+	"github.com/remind101/pkg/reporter/hb2/internal/gopsutil/internal/common"
 )
 
 func DiskPartitions(all bool) ([]DiskPartitionStat, error) {
