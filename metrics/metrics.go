@@ -1,11 +1,11 @@
-package metrics2
+package metrics
 
 // Usage:
-//   metrics2.SetAppName("myFancyApp")
-//   metrics2.Reporter, _ = NewDataDogMetricsReporter("statsd:2026")
-//   defer metrics2.Close()
+//   metrics.SetAppName("myFancyApp")
+//   metrics.Reporter, _ = NewDataDogMetricsReporter("statsd:2026")
+//   defer metrics.Close()
 //   ...
-//   metrics2.Count("mycount", 1, map[string]string{"feature_version":"v1"}, 1.0)
+//   metrics.Count("mycount", 1, map[string]string{"feature_version":"v1"}, 1.0)
 //
 var Reporter MetricsReporter
 var defaultTags map[string]string

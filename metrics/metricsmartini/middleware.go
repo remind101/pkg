@@ -1,4 +1,4 @@
-package metrics2martini
+package metricsmartini
 
 import (
 	"fmt"
@@ -6,10 +6,10 @@ import (
 	"strconv"
 
 	"github.com/go-martini/martini"
-	"github.com/remind101/pkg/metrics2"
+	"github.com/remind101/pkg/metrics"
 )
 
-// ResponseTimeReporter reports timing metrics using metrics2 package
+// ResponseTimeReporter reports timing metrics using metrics package
 //
 // Usage:
 //   r := martini.NewRouter()
@@ -23,7 +23,7 @@ import (
 //
 func ResponseTimeReporter() martini.Handler {
 	return func(res http.ResponseWriter, c martini.Context, r martini.Route) {
-		t := metrics2.ResponseTime()
+		t := metrics.ResponseTime()
 		defer t.Done()
 
 		rw := res.(martini.ResponseWriter)
