@@ -8,6 +8,7 @@ package pkg is a collection of Go packages that provide a layer of convenience o
 * **[logger](./logger)**: Defines a context aware structured logger.
 * **[reporter](./reporter)**: Defines a general abstraction for error reporting, with implementations for honeybadger.
 * **[metrics](./metrics)**: Reports metrics to statsd (supports DataDog's metrics tagging)
+* **[metricshttpx](./metrics/metricshttpx)**: Defines httpx-compatible middleware to report response times using `metrics`
 * **[metricsmartini](./metrics/metricsmartini)**: Defines martini route-level middleware to report response times using `metrics`
 * **[retry](./retry)**: Retry function calls with exponential backoff
 
