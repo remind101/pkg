@@ -2,10 +2,9 @@ package logger
 
 import (
 	"bytes"
+	"context"
 	"log"
 	"testing"
-
-	"golang.org/x/net/context"
 )
 
 func TestLogger(t *testing.T) {

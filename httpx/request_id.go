@@ -1,6 +1,6 @@
 package httpx
 
-import "golang.org/x/net/context"
+import "context"
 
 // WithRequestID inserts a RequestID into the context.
 func WithRequestID(ctx context.Context, requestID string) context.Context {

@@ -4,52 +4,58 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/remind101/newrelic"
-	"github.com/remind101/pkg/httpx"
-	"golang.org/x/net/context"
 )
 
+// newTxFromMuxRoute returns a new newrelic.Tx from a gorilla mux route.
+func newTxFromMuxRoute(tracer newrelic.TxTracer) func(*http.Request) newrelic.Tx {
+	return func(r *http.Request) newrelic.Tx {
+		path := r.URL.Path
+
+		if route := mux.CurrentRoute(r); route != nil {
+			path, _ = route.GetPathTemplate()
+		}
+
+		txName := fmt.Sprintf("%s %s", r.Method, path)
+
+		t := newrelic.NewRequestTx(txName, r.URL.String())
+		t.Tracer = tracer
+		return t
+	}
+}
+
+// NewRelicTracer is middleware that can be wrapped around a mux.Route to add
+// NewRelic transaction traces.
 type NewRelicTracer struct {
-	handler  httpx.Handler
-	tracer   newrelic.TxTracer
-	router   *httpx.Router
-	createTx func(string, string, newrelic.TxTracer) newrelic.Tx
+	// newTx will be called to create a new newrelic.Tx for the
+	// request.
+	newTx func(*http.Request) newrelic.Tx
+
+	handler http.Handler
 }
 
-func NewRelicTracing(h httpx.Handler, router *httpx.Router, tracer newrelic.TxTracer) *NewRelicTracer {
-	return &NewRelicTracer{h, tracer, router, createTx}
+// NewRelicTracing wraps h with NewRelic tracing for gorilla mux routes. It's
+// important that this middleware is added AFTER the route has been handled by
+// mux. In other words:
+//
+// BAD
+//	NewRelicTracing(mux.NewRouter(), tracer)
+//
+// GOOD
+//	router.Handle("/users/{id}", NewRelicTracing(handler, tracer))
+func NewRelicTracing(h http.Handler, tracer newrelic.TxTracer) *NewRelicTracer {
+	return &NewRelicTracer{
+		newTx:   newTxFromMuxRoute(tracer),
+		handler: h,
+	}
 }
 
-func (h *NewRelicTracer) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	path := templatePath(h.router, r)
-	txName := fmt.Sprintf("%s %s", r.Method, path)
-
-	tx := h.createTx(txName, r.URL.String(), h.tracer)
-	ctx = newrelic.WithTx(ctx, tx)
-
+func (h *NewRelicTracer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	tx := h.newTx(r)
 	tx.Start()
 	defer tx.End()
 
-	return h.handler.ServeHTTPContext(ctx, w, r)
-}
-
-func templatePath(router *httpx.Router, r *http.Request) string {
-	var tpl string
-
-	route, _, _ := router.Handler(r)
-	if route != nil {
-		tpl = route.GetPathTemplate()
-	}
-
-	if tpl == "" {
-		tpl = r.URL.Path
-	}
-
-	return tpl
-}
-
-func createTx(name, url string, tracer newrelic.TxTracer) newrelic.Tx {
-	t := newrelic.NewRequestTx(name, url)
-	t.Tracer = tracer
-	return t
+	r = r.WithContext(newrelic.WithTx(r.Context(), tx))
+	h.handler.ServeHTTP(w, r)
 }

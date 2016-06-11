@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-
-	"github.com/remind101/pkg/httpx"
-	"golang.org/x/net/context"
 )
 
 type BasicAuther struct {
@@ -15,11 +12,11 @@ type BasicAuther struct {
 	Realm      string
 
 	// The handler that will be called if the request is authorized.
-	Handler httpx.Handler
+	Handler http.Handler
 
 	// The handler that will be called if the request is not authorized. The
 	// zero value is DefaultUnauthorizedHandler
-	UnauthorizedHandler httpx.Handler
+	UnauthorizedHandler http.Handler
 }
 
 func (a *BasicAuther) authenticated(r *http.Request) bool {
@@ -40,27 +37,26 @@ func (a *BasicAuther) authenticated(r *http.Request) bool {
 	return a.User == pair[0] && a.Pass == pair[1]
 }
 
-func DefaultUnauthorizedHandler(realm string) httpx.HandlerFunc {
-	return httpx.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func DefaultUnauthorizedHandler(realm string) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Basic realm=%q`, realm))
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return nil
 	})
 }
 
-func (a *BasicAuther) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (a *BasicAuther) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if a.authenticated(r) {
-		return a.Handler.ServeHTTPContext(ctx, w, r)
+		a.Handler.ServeHTTP(w, r)
 	} else {
 		u := a.UnauthorizedHandler
 		if u == nil {
 			u = DefaultUnauthorizedHandler(a.Realm)
 		}
-		return u.ServeHTTPContext(ctx, w, r)
+		u.ServeHTTP(w, r)
 	}
 }
 
-func BasicAuth(h httpx.Handler, user, pass, realm string) *BasicAuther {
+func BasicAuth(h http.Handler, user, pass, realm string) *BasicAuther {
 	return &BasicAuther{
 		User:    user,
 		Pass:    pass,

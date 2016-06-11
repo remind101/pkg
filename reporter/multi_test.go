@@ -1,10 +1,9 @@
 package reporter
 
 import (
+	"context"
 	"errors"
 	"testing"
-
-	"golang.org/x/net/context"
 )
 
 func TestMultiReporter(t *testing.T) {

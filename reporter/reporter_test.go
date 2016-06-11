@@ -1,13 +1,12 @@
 package reporter
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"path"
 	"runtime"
 	"testing"
-
-	"golang.org/x/net/context"
 )
 
 var errBoom = errors.New("boom")

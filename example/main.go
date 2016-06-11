@@ -1,11 +1,11 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/remind101/pkg/httpx"
 	"github.com/remind101/pkg/httpx/middleware"
 	"github.com/remind101/pkg/logger"
@@ -14,48 +14,33 @@ import (
 	"golang.org/x/net/context"
 )
 
-func ok(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func ok(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	ip, err := ip(ctx)
 	if err != nil {
-		return err
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	logger.Info(ctx, "ip address", "ip", ip)
 
-	_, err = fmt.Fprintf(w, "%s\n", ip)
-	return err
-}
-
-func bad(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	return &Error{ID: "bad_error", Err: errors.New("bad request")}
-}
-
-func boom(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	panic("boom")
-}
-
-func errorHandler(ctx context.Context, err error, w http.ResponseWriter, r *http.Request) {
-	http.Error(w, err.Error(), http.StatusInternalServerError)
+	fmt.Fprintf(w, "%s\n", ip)
 }
 
 func main() {
 	// An error reporter that will log errors to stdout.
 	r := reporter.NewLogReporter()
 
-	m := httpx.NewRouter()
+	m := mux.NewRouter()
 
 	m.HandleFunc("/ok", ok).Methods("GET")
-	m.HandleFunc("/bad", bad).Methods("GET")
-	m.HandleFunc("/boom", boom).Methods("GET")
-	m.Handle("/auth", middleware.BasicAuth(httpx.HandlerFunc(ok), "user", "pass", "realm")).Methods("GET")
+	m.Handle("/auth", middleware.BasicAuth(http.HandlerFunc(ok), "user", "pass", "realm")).Methods("GET")
 
-	var h httpx.Handler
+	var h http.Handler
 
 	// Recover from panics, and report the recovered error to the reporter.
 	h = middleware.Recover(m, r)
-
-	// Handles any errors returned from handlers in a common format.
-	h = middleware.HandleError(h, errorHandler)
 
 	// Adds a logger to the context.Context that will log to stdout,
 	// prefixed with the request id.
@@ -64,16 +49,7 @@ func main() {
 	// Adds the request id to the context.
 	h = middleware.ExtractRequestID(h)
 
-	http.ListenAndServe(":8080", middleware.BackgroundContext(h))
-}
-
-type Error struct {
-	ID  string
-	Err error
-}
-
-func (e *Error) Error() string {
-	return fmt.Sprintf("%s: %s", e.ID, e.Err)
+	http.ListenAndServe(":8080", h)
 }
 
 // ip returns your ip.
