@@ -16,19 +16,14 @@ var RuntimeMetricsSamplingInterval time.Duration = 30 * time.Second
 //     go metrics.Runtime()
 //     ...
 //   }
-
 func Runtime() {
-	sampleEvery(RuntimeMetricsSamplingInterval)
-}
-
-func sampleEvery(t time.Duration) {
-	c := time.Tick(t)
+	c := time.Tick(RuntimeMetricsSamplingInterval)
 	for _ = range c {
 		ReportRuntimeMetrics()
 	}
 }
 
-// Runtime enters into a loop, sampling and outputing the runtime stats periodically.
+// Samples and reports current runtime status once.
 func ReportRuntimeMetrics() {
 	var memstats runtime.MemStats
 	runtime.ReadMemStats(&memstats)
