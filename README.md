@@ -11,6 +11,7 @@ package pkg is a collection of Go packages that provide a layer of convenience o
 * **[metricshttpx](./metrics/metricshttpx)**: Defines httpx-compatible middleware to report response times using `metrics`
 * **[metricsmartini](./metrics/metricsmartini)**: Defines martini route-level middleware to report response times using `metrics`
 * **[retry](./retry)**: Retry function calls with exponential backoff
+* **[pq](./pq)**: Wrapper around lib/pq for metrics and keepalives
 
 ## Usage
 
