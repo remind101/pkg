@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"os"
 	"reflect"
 	"testing"
 )
@@ -34,18 +35,22 @@ func TestMetricTags(t *testing.T) {
 		42,
 	})
 
-	SetAppName("testapp")
+	os.Setenv("EMPIRE_APPNAME", "testapp")
+	os.Setenv("EMPIRE_PROCESS", "testprocess")
+	SetEmpireDefaultTags()
 	defer resetDefaultTags()
 
 	must(t, Count("testcount", 42, nil, 1.0))
 	assertDeepEqual(t, "app name and no tags", r.LastCountMetric, &intMetric{
-		metric{"testcount", map[string]string{"app": "testapp"}, 1.0},
+		metric{"testcount", map[string]string{"empire.app.name": "testapp", "empire.process.name": "testprocess"}, 1.0},
 		42,
 	})
 
 	must(t, Count("testcount", 42, map[string]string{"foo": "bar"}, 1.0))
 	assertDeepEqual(t, "app name and some tags", r.LastCountMetric, &intMetric{
-		metric{"testcount", map[string]string{"app": "testapp", "foo": "bar"}, 1.0},
+		metric{"testcount",
+			map[string]string{"empire.app.name": "testapp", "empire.process.name": "testprocess", "foo": "bar"},
+			1.0},
 		42,
 	})
 }
