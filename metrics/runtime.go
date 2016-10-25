@@ -47,6 +47,7 @@ func ReportRuntimeMetrics() {
 		"runtime.MemStats.MSpanSys":     float64(memstats.MSpanSys),
 		"runtime.MemStats.NextGC":       float64(memstats.NextGC),
 		"runtime.MemStats.NumGC":        float64(memstats.NumGC),
+		"runtime.MemStats.PauseTotalMs": float64(memstats.PauseTotalNs) / float64(time.Millisecond),
 		"runtime.MemStats.StackInuse":   float64(memstats.StackInuse),
 	}
 
