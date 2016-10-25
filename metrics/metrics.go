@@ -29,6 +29,11 @@ func SetAppName(appName string) {
 	defaultTags["app"] = appName
 }
 
+// SetProcessName adds a "process:<name>" tag to each metric
+func SetProcessName(processName string) {
+	defaultTags["process"] = processName
+}
+
 func resetDefaultTags() {
 	defaultTags = make(map[string]string, 1)
 }
