@@ -29,10 +29,25 @@ func (h *NewRelicGoTracer) ServeHTTPContext(ctx context.Context, w http.Response
 
 	txn := h.app.StartTransaction(txName, w, r)
 
-	ctx = context.WithValue(ctx, "newrelic_txn", txn)
-	ctx = context.WithValue(ctx, "newrelic_app", h.app)
+	ctx = context.WithValue(ctx, newrelic_txn, txn)
+	ctx = context.WithValue(ctx, newrelic_app, h.app)
 
 	defer txn.End()
 
 	return h.handler.ServeHTTPContext(ctx, w, r)
 }
+
+func NewrelicAppFromContext(ctx context.Context) (newrelic.Application, bool) {
+	app, ok := ctx.Value(newrelic_app).(newrelic.Application)
+	return app, ok
+}
+
+func NewrelicTxnFromContext(ctx context.Context) (newrelic.Transaction, bool) {
+	txn, ok := ctx.Value(newrelic_txn).(newrelic.Transaction)
+	return txn, ok
+}
+
+const (
+	newrelic_app = iota
+	newrelic_txn = iota
+)
