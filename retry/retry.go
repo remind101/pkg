@@ -82,9 +82,7 @@ func (r *Retrier) Retry(f func() (interface{}, error)) (interface{}, error) {
 		}
 
 		time.Sleep(next)
-		if len(r.notifyRetryFuncs) > 0 {
-			r.notifyRetry(err, numTries)
-		}
+		r.notifyRetry(err, numTries)
 	}
 }
 
