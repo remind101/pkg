@@ -36,11 +36,15 @@ type Retrier struct {
 
 var retrierNum uint32 = 0
 
+func newName(name string) {
+	fmt.Sprintf("%s%d", name, atomic.AddUint32(&retrierNum, 1))
+}
+
 func NewRetrier(name string,
 	backOffOpts *BackOffOpts, shouldRetryFunc func(error) bool) *Retrier {
 
 	return &Retrier{
-		Name:                      fmt.Sprintf("%s%d", name, atomic.AddUint32(&retrierNum, 1)),
+		Name:                      newName(name),
 		backOffOpts:               backOffOpts,
 		shouldRetryFunc:           shouldRetryFunc,
 		notifyRetryFuncs:          []RetryNotifier{logRetry},
@@ -52,7 +56,7 @@ func New(name string,
 	backOffOpts *BackOffOpts, shouldRetryFunc func(error) bool) *Retrier {
 
 	return &Retrier{
-		Name:                      fmt.Sprintf("%s%d", name, atomic.AddUint32(&retrierNum, 1)),
+		Name:                      newName(name),
 		backOffOpts:               backOffOpts,
 		shouldRetryFunc:           shouldRetryFunc,
 		notifyRetryFuncs:          []RetryNotifier{},
