@@ -43,9 +43,21 @@ func NewRetrier(name string,
 		Name:                      fmt.Sprintf("%s%d", name, atomic.AddUint32(&retrierNum, 1)),
 		backOffOpts:               backOffOpts,
 		shouldRetryFunc:           shouldRetryFunc,
-		notifyRetryFuncs:          []RetryNotifier{},
+		notifyRetryFuncs:          []RetryNotifier{logRetry},
 		notifyGaveUpFuncs:         []RetryNotifier{logGaveUp},
 		notifyShouldNotRetryFuncs: []RetryNotifier{logShouldNotRetry}}
+}
+
+func New(name string,
+	backOffOpts *BackOffOpts, shouldRetryFunc func(error) bool) *Retrier {
+
+	return &Retrier{
+		Name:                      fmt.Sprintf("%s%d", name, atomic.AddUint32(&retrierNum, 1)),
+		backOffOpts:               backOffOpts,
+		shouldRetryFunc:           shouldRetryFunc,
+		notifyRetryFuncs:          []RetryNotifier{},
+		notifyGaveUpFuncs:         []RetryNotifier{},
+		notifyShouldNotRetryFuncs: []RetryNotifier{}}
 }
 
 func NewErrorTypeRetrier(name string,
@@ -124,6 +136,11 @@ func (r *Retrier) notifyRetry(err error, numTries int) {
 func logShouldNotRetry(re *RetryEvent) {
 	log.Printf("Error not qualified for retry: error=%s count#retry.%s.no_retry=1\n",
 		re.Err.Error(), re.Retrier.Name)
+}
+
+func logRetry(re *RetryEvent) {
+	log.Printf("Retrying after %d tries: error=%s count#retry.%s.retry_count=1\n",
+		re.NumTries, re.Err.Error(), re.Retrier.Name)
 }
 
 func logGaveUp(re *RetryEvent) {
