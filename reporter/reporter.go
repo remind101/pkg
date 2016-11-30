@@ -3,12 +3,11 @@
 package reporter
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"runtime"
 	"strings"
-
-	"golang.org/x/net/context"
 )
 
 // DefaultMax is the default maximum number of lines to show from the backtrace.

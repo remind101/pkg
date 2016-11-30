@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/remind101/pkg/httpx"
 	"github.com/remind101/pkg/reporter"
-	"golang.org/x/net/context"
 )
 
 func TestRecovery(t *testing.T) {

@@ -3,12 +3,11 @@
 package logger
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"strings"
-
-	"golang.org/x/net/context"
 )
 
 // Logger represents a structured leveled logger.

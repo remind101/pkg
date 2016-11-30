@@ -1,13 +1,13 @@
 package nr
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/remind101/newrelic"
 	"github.com/remind101/pkg/reporter"
 	"github.com/remind101/pkg/reporter/util"
-	"golang.org/x/net/context"
 )
 
 // Ensure that Reporter implements the reporter.Reporter interface.

@@ -1,6 +1,7 @@
 package metricshttpx_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -10,7 +11,6 @@ import (
 	"github.com/remind101/pkg/httpx/middleware"
 	"github.com/remind101/pkg/metrics"
 	"github.com/remind101/pkg/metrics/metricshttpx"
-	"golang.org/x/net/context"
 )
 
 func TestMiddlewareReportsResponseTimeMetrics(t *testing.T) {

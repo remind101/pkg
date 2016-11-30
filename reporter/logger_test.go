@@ -2,11 +2,11 @@ package reporter
 
 import (
 	"bytes"
+	"context"
 	"log"
 	"testing"
 
 	"github.com/remind101/pkg/logger"
-	"golang.org/x/net/context"
 )
 
 func TestLogReporter(t *testing.T) {

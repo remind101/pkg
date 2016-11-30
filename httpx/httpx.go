@@ -2,9 +2,8 @@
 package httpx
 
 import (
+	"context"
 	"net/http"
-
-	"golang.org/x/net/context"
 )
 
 // Handler is represents a Handler that can take a context.Context as the

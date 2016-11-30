@@ -1,10 +1,10 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/remind101/pkg/httpx"
-	"golang.org/x/net/context"
 )
 
 // DefaultGenerator is the default context generator. Defaults to just use
