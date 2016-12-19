@@ -1,8 +1,9 @@
 package metrics
+
 import "os"
 
 // Usage:
-//   metrics.SetAppName("myFancyApp")
+//   metrics.SetEmpireDefaultTags()
 //   metrics.Reporter, _ = NewDataDogMetricsReporter("statsd:2026")
 //   defer metrics.Close()
 //   ...
