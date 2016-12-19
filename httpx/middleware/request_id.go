@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/remind101/pkg/httpx"
-	"golang.org/x/net/context"
 )
 
 // DefaultRequestIDExtractor is the default function to use to extract a request
@@ -19,27 +18,28 @@ type RequestID struct {
 	// id from the `X-Request-ID` or `Request-ID` headers.
 	Extractor func(*http.Request) string
 
-	// handler is the wrapped httpx.Handler.
-	handler httpx.Handler
+	// handler is the wrapped http.Handler.
+	handler http.Handler
 }
 
-func ExtractRequestID(h httpx.Handler) *RequestID {
+func ExtractRequestID(h http.Handler) *RequestID {
 	return &RequestID{
 		handler: h,
 	}
 }
 
-// ServeHTTPContext implements the httpx.Handler interface. It extracts a
+// ServeHTTP implements the http.Handler interface. It extracts a
 // request id from the headers and inserts it into the context.
-func (h *RequestID) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (h *RequestID) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	e := h.Extractor
 	if e == nil {
 		e = DefaultRequestIDExtractor
 	}
 	requestID := e(r)
 
-	ctx = httpx.WithRequestID(ctx, requestID)
-	return h.handler.ServeHTTPContext(ctx, w, r)
+	ctx := r.Context()
+	r = r.WithContext(httpx.WithRequestID(ctx, requestID))
+	h.handler.ServeHTTP(w, r)
 }
 
 // HeaderExtractor returns a function that can extract a request id from a list

@@ -1,12 +1,12 @@
 package nr
 
 import (
+	"context"
 	"errors"
 	"testing"
 
 	"github.com/remind101/newrelic"
 	"github.com/remind101/pkg/reporter"
-	"golang.org/x/net/context"
 )
 
 var (

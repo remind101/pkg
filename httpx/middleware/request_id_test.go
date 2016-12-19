@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/remind101/pkg/httpx"
-	"golang.org/x/net/context"
 )
 
 func TestRequestID(t *testing.T) {
@@ -19,26 +18,22 @@ func TestRequestID(t *testing.T) {
 		{http.Header{http.CanonicalHeaderKey("Foo"): []string{"1234"}}, ""},
 	}
 
-	for _, tt := range tests {
+	for i, tt := range tests {
+		t.Log(i)
 		m := &RequestID{
-			handler: httpx.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-				requestID := httpx.RequestID(ctx)
+			handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requestID := httpx.RequestID(r.Context())
 
 				if got, want := requestID, tt.id; got != want {
 					t.Fatalf("RequestID => %s; want %s", got, want)
 				}
-
-				return nil
 			}),
 		}
 
-		ctx := context.Background()
 		resp := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/", nil)
 		req.Header = tt.header
 
-		if err := m.ServeHTTPContext(ctx, resp, req); err != nil {
-			t.Fatal(err)
-		}
+		m.ServeHTTP(resp, req)
 	}
 }

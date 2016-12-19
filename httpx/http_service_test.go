@@ -1,13 +1,13 @@
 package httpx
 
 import (
+	"context"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
 	"testing"
 
-	"golang.org/x/net/context"
 	"github.com/remind101/pkg/retry"
 )
 

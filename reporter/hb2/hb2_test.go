@@ -1,6 +1,7 @@
 package hb2
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -10,8 +11,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"golang.org/x/net/context"
 
 	"github.com/remind101/pkg/reporter"
 )
