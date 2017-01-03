@@ -28,7 +28,7 @@ func TestRecovery(t *testing.T) {
 			}
 
 			if got, want := e.Context["request_id"], "1234"; got != want {
-				t.Fatalf("RequestID => %s; want %s")
+				t.Fatalf("RequestID => %s; want %s", got, want)
 			}
 
 			return nil

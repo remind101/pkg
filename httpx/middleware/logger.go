@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/remind101/pkg/httpx"
 	"github.com/remind101/pkg/logger"
@@ -54,15 +55,17 @@ func Log(h httpx.Handler) *Logger {
 func (h *Logger) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	rw := NewResponseWriter(w)
 
-	logger.Info(ctx, "request.start",
-		"method", r.Method,
-		"path", r.URL.Path,
-	)
+	t := time.Now()
 
 	err := h.handler.ServeHTTPContext(ctx, rw, r)
 
-	logger.Info(ctx, "request.complete",
+	ms := fmt.Sprintf("%d", (int(time.Now().Sub(t).Seconds() * 1000)))
+
+	logger.Info(ctx, "request",
+		"method", r.Method,
+		"path", r.URL.Path,
 		"status", rw.Status(),
+		"ms", ms,
 	)
 
 	return err

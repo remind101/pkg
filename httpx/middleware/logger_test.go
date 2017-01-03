@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/remind101/pkg/httpx"
@@ -27,7 +28,11 @@ func TestLogger(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if got, want := b.String(), "request_id= request.start method=GET path=/\nrequest_id= request.complete status=201\n"; got != want {
+	got := b.String()
+
+	// Missing duration to avoid timing false positives
+	want := "request_id= request method=GET path=/ status=201"
+	if strings.Contains(got, want) != true {
 		t.Fatalf("%s; want %s", got, want)
 	}
 }
