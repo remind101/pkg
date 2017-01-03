@@ -59,7 +59,7 @@ func (h *Logger) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r 
 
 	err := h.handler.ServeHTTPContext(ctx, rw, r)
 
-	ms := fmt.Sprintf("%d", (int(time.Now().Sub(t)).Seconds() * 1000))
+	ms := fmt.Sprintf("%d", (int(time.Now().Sub(t).Seconds() * 1000)))
 
 	logger.Info(ctx, "request",
 		"method", r.Method,
