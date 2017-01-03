@@ -62,9 +62,9 @@ func (h *Logger) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r 
 	dur := fmt.Sprintf("%.3f", (time.Now().Sub(t)).Seconds())
 
 	logger.Info(ctx, "request",
-		"status", rw.Status(),
 		"method", r.Method,
 		"path", r.URL.Path,
+		"status", rw.Status(),
 		"dur", dur,
 	)
 
