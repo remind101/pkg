@@ -59,13 +59,13 @@ func (h *Logger) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r 
 
 	err := h.handler.ServeHTTPContext(ctx, rw, r)
 
-	dur := fmt.Sprintf("%.3f", (time.Now().Sub(t)).Seconds())
+	ms := fmt.Sprintf("%d", (int(time.Now().Sub(t)).Seconds() * 1000))
 
 	logger.Info(ctx, "request",
 		"method", r.Method,
 		"path", r.URL.Path,
 		"status", rw.Status(),
-		"dur", dur,
+		"ms", ms,
 	)
 
 	return err
