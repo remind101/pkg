@@ -31,7 +31,7 @@ func TestLogger(t *testing.T) {
 	got := b.String()
 
 	// Missing duration to avoid timing false positives
-	want := "request_id= request method=GET path=/ status=201"
+	want := "rid= request method=GET path=/ status=201"
 	if strings.Contains(got, want) != true {
 		t.Fatalf("%s; want %s", got, want)
 	}
