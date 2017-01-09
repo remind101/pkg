@@ -35,7 +35,11 @@ func InsertLogger(h httpx.Handler, f func(context.Context, *http.Request) logger
 
 func stdLogger(out io.Writer) func(context.Context, *http.Request) logger.Logger {
 	return func(ctx context.Context, r *http.Request) logger.Logger {
-		return logger.New(log.New(out, fmt.Sprintf("rid=%s ", httpx.RequestID(ctx)), 0))
+		rid := httpx.RequestID(ctx)
+		if rid == "" {
+			rid = "-"
+		}
+		return logger.New(log.New(out, fmt.Sprintf("rid=%s ", rid)), 0)
 	}
 }
 
