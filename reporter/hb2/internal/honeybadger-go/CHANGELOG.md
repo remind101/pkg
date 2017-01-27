@@ -5,6 +5,26 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
 
+## [0.2.0] - 2016-10-14
+### Changed
+- Sunset performance metrics. See
+  http://blog.honeybadger.io/sunsetting-performance-metrics/
+
+## [0.1.0] - 2016-05-12
+### Added
+- Use `honeybadger.MetricsHandler` to send us request metrics!
+
+## [0.0.3] - 2016-04-13
+### Added
+- `honeybadger.NewNullBackend()`: creates a backend which swallows all errors
+  and does not send them to Honeybadger. This is useful for development and
+  testing to disable sending unnecessary errors. -@gaffneyc
+- Tested against Go 1.5 and 1.6. -@gaffneyc
+
+### Fixed
+- Export Fingerprint fields. -@smeriwether
+- Fix HB due to changes in shirou/gopsutil. -@kostyantyn
+
 ## [0.0.2] - 2016-03-28
 ### Added
 - Make newError function public (#6). -@kostyantyn
