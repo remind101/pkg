@@ -3,6 +3,7 @@ package honeybadger
 import (
 	"net/http"
 	"strings"
+	"time"
 )
 
 // The Payload interface is implemented by any type which can be handled by the
@@ -99,10 +100,33 @@ func (client *Client) Handler(h http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
+// MetricsHandler is deprecated.
+func (client *Client) MetricsHandler(h http.Handler) http.Handler {
+	client.Config.Logger.Printf("DEPRECATION WARNING: honeybadger.MetricsHandler() has no effect and will be removed.")
+	if h == nil {
+		h = http.DefaultServeMux
+	}
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		h.ServeHTTP(w, r)
+	}
+	return http.HandlerFunc(fn)
+}
+
+// Increment is deprecated.
+func (client *Client) Increment(metric string, value int) {
+	client.Config.Logger.Printf("DEPRECATION WARNING: honeybadger.Increment() has no effect and will be removed.")
+}
+
+// Timing is deprecated.
+func (client *Client) Timing(metric string, value time.Duration) {
+	client.Config.Logger.Printf("DEPRECATION WARNING: honeybadger.Timing() has no effect and will be removed.")
+}
+
 // New returns a new instance of Client.
 func New(c Configuration) *Client {
 	config := newConfig(c)
 	worker := newBufferedWorker(config)
+
 	client := Client{
 		Config:  config,
 		worker:  worker,

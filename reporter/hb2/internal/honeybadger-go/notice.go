@@ -7,12 +7,10 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/remind101/pkg/reporter/hb2/internal/uuid"
-	"github.com/remind101/pkg/reporter/hb2/internal/gopsutil/load"
-	"github.com/remind101/pkg/reporter/hb2/internal/gopsutil/mem"
+	"github.com/pborman/uuid"
+	"github.com/shirou/gopsutil/load"
+	"github.com/shirou/gopsutil/mem"
 )
-
-type hash map[string]interface{}
 
 // ErrorClass represents the class name of the error which is sent to
 // Honeybadger.
@@ -23,11 +21,11 @@ type ErrorClass struct {
 // Fingerprint represents the fingerprint of the error, which controls grouping
 // in Honeybadger.
 type Fingerprint struct {
-	content string
+	Content string
 }
 
 func (f *Fingerprint) String() string {
-	return f.content
+	return f.Content
 }
 
 // Notice is a representation of the error which is sent to Honeybadger, and
@@ -98,7 +96,7 @@ func getStats() *hash {
 		}
 	}
 
-	if stat, err := load.LoadAvg(); err == nil {
+	if stat, err := load.Avg(); err == nil {
 		l = &hash{
 			"one":     stat.Load1,
 			"five":    stat.Load5,

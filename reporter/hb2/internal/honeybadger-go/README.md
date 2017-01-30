@@ -73,6 +73,7 @@ if err != nil {
 }
 ```
 
+
 ## Sample Application
 
 If you'd like to see the library in action before you integrate it with your apps, check out our [sample application](https://github.com/honeybadger-io/crywolf-go). 
@@ -216,6 +217,17 @@ honeybadger.BeforeNotify(
 )
 ```
 
+---
+
+### ``honeybadger.NewNullBackend()``: Disable data reporting.
+
+`NewNullBackend` creates a backend which swallows all errors and does not send them to Honeybadger. This is useful for development and testing to disable sending unnecessary errors.
+
+#### Examples:
+
+```go
+honeybadger.Configure(honeybadger.Configuration{Backend: honeybadger.NewNullBackend()})
+```
 
 ---
 
