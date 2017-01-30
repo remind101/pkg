@@ -1,13 +1,13 @@
 package middleware
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/remind101/pkg/httpx"
-	"golang.org/x/net/context"
 )
 
 type BasicAuther struct {

@@ -1,12 +1,12 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
 	"github.com/remind101/newrelic"
 	"github.com/remind101/pkg/httpx"
-	"golang.org/x/net/context"
 )
 
 type NewRelicTracer struct {

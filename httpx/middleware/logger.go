@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/remind101/pkg/httpx"
 	"github.com/remind101/pkg/logger"
-	"golang.org/x/net/context"
 )
 
 // StdoutLogger is a logger.Logger generator that generates a logger that writes

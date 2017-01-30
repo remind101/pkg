@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -11,7 +12,6 @@ import (
 	"github.com/remind101/pkg/logger"
 	"github.com/remind101/pkg/reporter"
 	"github.com/remind101/pkg/retry"
-	"golang.org/x/net/context"
 )
 
 func ok(ctx context.Context, w http.ResponseWriter, r *http.Request) error {

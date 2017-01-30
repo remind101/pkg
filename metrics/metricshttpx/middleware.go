@@ -1,11 +1,10 @@
 package metricshttpx
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strconv"
-
-	"golang.org/x/net/context"
 
 	"github.com/remind101/pkg/httpx"
 	"github.com/remind101/pkg/httpx/middleware"

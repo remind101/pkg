@@ -1,10 +1,10 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/remind101/pkg/httpx"
-	"golang.org/x/net/context"
 )
 
 // DefaultRequestIDExtractor is the default function to use to extract a request

@@ -2,6 +2,7 @@ package httpx
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,8 +13,6 @@ import (
 	"time"
 
 	"github.com/remind101/pkg/retry"
-
-	"golang.org/x/net/context"
 )
 
 type RoundTripper interface {

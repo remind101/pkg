@@ -1,12 +1,11 @@
 package httpx
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"golang.org/x/net/context"
 )
 
 type routerTest struct {

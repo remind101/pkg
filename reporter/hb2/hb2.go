@@ -3,12 +3,12 @@
 package hb2
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
-	"github.com/remind101/pkg/reporter/hb2/internal/honeybadger-go"
 	"github.com/remind101/pkg/reporter"
-	"golang.org/x/net/context"
+	"github.com/remind101/pkg/reporter/hb2/internal/honeybadger-go"
 )
 
 // Headers that won't be sent to honeybadger.

@@ -1,10 +1,10 @@
 package reporter
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/remind101/pkg/logger"
-	"golang.org/x/net/context"
 )
 
 // LogReporter is a Handler that logs the error to a log.Logger.

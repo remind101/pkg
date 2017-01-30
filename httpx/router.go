@@ -1,12 +1,12 @@
 package httpx
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
 
 	"github.com/gorilla/mux"
-	"golang.org/x/net/context"
 )
 
 // Router is an httpx.Handler router.

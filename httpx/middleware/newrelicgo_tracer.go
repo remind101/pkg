@@ -1,18 +1,18 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
 	"github.com/newrelic/go-agent"
 	"github.com/remind101/pkg/httpx"
-	"golang.org/x/net/context"
 )
 
 type NewRelicGoTracer struct {
-	handler  httpx.Handler
-	app      newrelic.Application
-	router   *httpx.Router
+	handler httpx.Handler
+	app     newrelic.Application
+	router  *httpx.Router
 }
 
 func NewRelicGoTracing(h httpx.Handler, router *httpx.Router, app newrelic.Application) httpx.Handler {

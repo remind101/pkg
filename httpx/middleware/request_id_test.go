@@ -1,12 +1,12 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/remind101/pkg/httpx"
-	"golang.org/x/net/context"
 )
 
 func TestRequestID(t *testing.T) {
