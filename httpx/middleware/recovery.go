@@ -1,9 +1,9 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 
+	"github.com/pkg/errors"
 	"github.com/remind101/pkg/httpx"
 	"github.com/remind101/pkg/reporter"
 	"golang.org/x/net/context"
@@ -41,14 +41,12 @@ func (h *Recovery) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, 
 		if v := recover(); v != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 
-			err = fmt.Errorf("%v", v)
-
-			if v, ok := v.(error); ok {
-				err = v
+			err, ok := v.(error)
+			if !ok {
+				err = errors.Errorf("%v", v)
 			}
 
 			reporter.Report(ctx, err)
-
 			return
 		}
 	}()

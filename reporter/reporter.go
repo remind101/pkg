@@ -5,22 +5,23 @@ package reporter
 import (
 	"fmt"
 	"net/http"
-	"runtime"
 	"strings"
 
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
-// DefaultMax is the default maximum number of lines to show from the backtrace.
+// DefaultMax is the default maximum number of lines to show from the stack trace.
+//TODO(danilo): do not forget about this
 var DefaultMax = 1024
 
 // Reporter represents an error handler.
 type Reporter interface {
 	// Report reports the error to an external system. The provided error
 	// could be an Error instance, which will contain additional information
-	// about the error, including a backtrace and any contextual
+	// about the error, including a stack trace and any contextual
 	// information. Implementers should type assert the error to an *Error
-	// if they want to report the backtrace.
+	// if they want to report the stack trace.
 	Report(context.Context, error) error
 }
 
@@ -102,40 +103,49 @@ func Monitor(ctx context.Context) {
 	}
 }
 
-// A line from the backtrace.
-type BacktraceLine struct {
-	PC   uintptr
-	File string
-	Line int
-}
-
-// Error wraps an error with additional information, like a backtrace,
+// Error wraps an error with additional information, like a stack trace,
 // contextual information, and an http request if provided.
 type Error struct {
 	// The error that was generated.
 	Err error
-
-	// The backtrace.
-	Backtrace []*BacktraceLine
 
 	// Any freeform contextual information about that error.
 	Context map[string]interface{}
 
 	// If provided, an http request that generated the error.
 	Request *http.Request
+
+	// This is private so that it can be exposed via StackTrace(),
+	// which implements the stackTracker interface.
+	stackTrace *errors.StackTrace
 }
 
-// Make error implement the error interface.
+// Make Error implement the error interface.
 func (e *Error) Error() string {
 	return e.Err.Error()
 }
 
-// NewError wraps err as an Error and generates a backtrace pointing at the
+// Make Error implement the causer interface.
+func (e *Error) Cause() error {
+	return errors.Cause(e.Err)
+}
+
+// Make Error implement the stackTracer interface.
+func (e *Error) StackTrace() errors.StackTrace {
+	if e.stackTrace != nil {
+		return *e.stackTrace
+	}
+	return nil
+}
+
+// NewError wraps err as an Error and generates a stack trace pointing at the
 // caller of this function.
 func NewError(err error, skip int) *Error {
 	return &Error{
-		Err:       err,
-		Backtrace: backtrace(skip+1, DefaultMax),
+		Err: err,
+		//TODO(danilo): generate stacktrace if err doesn't implement stackTracer interface
+		//it should also take the skip parameter into account
+		stackTrace: stacktrace(err),
 	}
 }
 
@@ -165,24 +175,43 @@ func (e *MultiError) Error() string {
 	return strings.Join(m, ", ")
 }
 
-// backtrace generates a backtrace and returns a slice of BacktraceLine.
-func backtrace(skip, max int) []*BacktraceLine {
-	var lines []*BacktraceLine
+type causer interface {
+	Cause() error
+}
 
-	for i := skip + 1; i < max; i++ {
-		pc, file, line, ok := runtime.Caller(i)
-		if !ok {
+type stackTracer interface {
+	StackTrace() errors.StackTrace
+}
+
+// There are two interfaces that drive this implementation:
+//
+//   * causer
+//     - it unwraps an error instance in a chain of errors created with errors.Wrap
+//     - therefore, the last one in the chain is the root cause (inner-most)
+//
+//   * stackTracer
+//     - not all errors in the aforementioned chain may have a stack trace,
+//
+// It returns the innermost stack trace in a chain of errors because it is
+// the closest to the root cause.
+//
+func stacktrace(err error) *errors.StackTrace {
+	var stack errors.StackTrace
+
+	for err != nil {
+		err_with_stack, stack_ok := err.(stackTracer)
+		if stack_ok && err_with_stack.StackTrace() != nil {
+			stack = err_with_stack.StackTrace()
+		}
+		if err_with_cause, causer_ok := err.(causer); causer_ok {
+			err = err_with_cause.Cause()
+		} else {
+			// end of chain
 			break
 		}
-
-		lines = append(lines, &BacktraceLine{
-			PC:   pc,
-			File: file,
-			Line: line,
-		})
 	}
-
-	return lines
+	//TODO(danilo): genereate stack trace if stack is nil
+	return &stack
 }
 
 // info is used internally to store contextual information. Any empty info
