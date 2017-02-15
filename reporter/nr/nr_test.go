@@ -1,9 +1,9 @@
 package nr
 
 import (
-	"errors"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/remind101/newrelic"
 	"github.com/remind101/pkg/reporter"
 	"golang.org/x/net/context"
@@ -21,7 +21,7 @@ func TestReport(t *testing.T) {
 	tx := newrelic.NewTx("GET /boom")
 	tx.Reporter = &TestReporter{
 		f: func(id int64, exceptionType, errorMessage, stackTrace, stackFrameDelim string) {
-			if got, want := exceptionType, "*errors.errorString"; got != want {
+			if got, want := exceptionType, "*errors.fundamental"; got != want {
 				t.Errorf("exceptionType => %v; want %v", got, want)
 			}
 			if got, want := errorMessage, "boom"; got != want {

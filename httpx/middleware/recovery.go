@@ -41,7 +41,8 @@ func (h *Recovery) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, 
 		if v := recover(); v != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 
-			err, ok := v.(error)
+			var ok bool
+			err, ok = v.(error)
 			if !ok {
 				err = errors.Errorf("%v", v)
 			}
