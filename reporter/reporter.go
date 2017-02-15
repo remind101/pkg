@@ -116,7 +116,7 @@ type Error struct {
 
 	// This is private so that it can be exposed via StackTrace(),
 	// which implements the stackTracker interface.
-	stackTrace *errors.StackTrace
+	stackTrace errors.StackTrace
 }
 
 // Make Error implement the error interface.
@@ -131,10 +131,7 @@ func (e *Error) Cause() error {
 
 // Make Error implement the stackTracer interface.
 func (e *Error) StackTrace() errors.StackTrace {
-	if e.stackTrace != nil {
-		return *e.stackTrace
-	}
-	return nil
+	return e.stackTrace
 }
 
 // NewError wraps err as an Error and generates a stack trace pointing at the
@@ -180,9 +177,9 @@ type stackTracer interface {
 	StackTrace() errors.StackTrace
 }
 
-// It generates a brand new stack trace
-// If it's in the middle of recovering from a panic call,
-// it reindexes starting at the
+// It generates a brand new stack trace given an error and
+// the number of frames that should be skipped,
+// from innermost to outermost frames.
 func gen_stacktrace(err error, skip int) errors.StackTrace {
 	var stack errors.StackTrace
 	err_with_stack := errors.WithStack(err)
@@ -231,7 +228,7 @@ func get_stacktrace(err error) errors.StackTrace {
 	return stack
 }
 
-func stacktrace(err error, skip int) *errors.StackTrace {
+func stacktrace(err error, skip int) errors.StackTrace {
 	stack := get_stacktrace(err)
 	if stack == nil {
 		stack = gen_stacktrace(err, skip+1)
@@ -239,7 +236,7 @@ func stacktrace(err error, skip int) *errors.StackTrace {
 	if len(stack) > DefaultMax {
 		stack = stack[:DefaultMax]
 	}
-	return &stack
+	return stack
 }
 
 // info is used internally to store contextual information. Any empty info
