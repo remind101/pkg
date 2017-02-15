@@ -5,7 +5,6 @@ import (
 	"log"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/remind101/pkg/logger"
 	"golang.org/x/net/context"
 )
@@ -17,7 +16,7 @@ func TestLogReporter(t *testing.T) {
 	}{
 		{errBoom, "request_id=1234  error=\"boom\" line=0 file=unknown\n"},
 		{&Error{Err: errBoom}, "request_id=1234  error=\"boom\" line=0 file=unknown\n"},
-		{NewError(errors.Wrap(errBoom, "this is a wrap"), 0), "request_id=1234  error=\"this is a wrap: boom\" line=20 file=logger_test.go\n"},
+		{NewError(errBoom, 0), "request_id=1234  error=\"boom\" line=19 file=logger_test.go\n"},
 	}
 
 	for i, tt := range tests {

@@ -12,7 +12,6 @@ import (
 )
 
 // DefaultMax is the default maximum number of lines to show from the stack trace.
-//TODO(danilo): do not forget about this
 var DefaultMax = 1024
 
 // Reporter represents an error handler.
@@ -142,10 +141,8 @@ func (e *Error) StackTrace() errors.StackTrace {
 // caller of this function.
 func NewError(err error, skip int) *Error {
 	return &Error{
-		Err: err,
-		//TODO(danilo): generate stacktrace if err doesn't implement stackTracer interface
-		//it should also take the skip parameter into account
-		stackTrace: stacktrace(err),
+		Err:        err,
+		stackTrace: stacktrace(err, skip+1),
 	}
 }
 
@@ -183,6 +180,28 @@ type stackTracer interface {
 	StackTrace() errors.StackTrace
 }
 
+// It generates a brand new stack trace
+// If it's in the middle of recovering from a panic call,
+// it reindexes starting at the
+func gen_stacktrace(err error, skip int) errors.StackTrace {
+	var stack errors.StackTrace
+	err_with_stack := errors.WithStack(err)
+	stack = err_with_stack.(stackTracer).StackTrace()
+	skip += 1
+
+	// if it is recovering from a panic() call,
+	// reset the stack trace at that point
+	for index, frame := range stack {
+		file := fmt.Sprintf("%s", frame)
+		if file == "panic.go" {
+			skip = index + 1
+			break
+		}
+	}
+
+	return stack[skip:]
+}
+
 // There are two interfaces that drive this implementation:
 //
 //   * causer
@@ -195,9 +214,8 @@ type stackTracer interface {
 // It returns the innermost stack trace in a chain of errors because it is
 // the closest to the root cause.
 //
-func stacktrace(err error) *errors.StackTrace {
+func get_stacktrace(err error) errors.StackTrace {
 	var stack errors.StackTrace
-
 	for err != nil {
 		err_with_stack, stack_ok := err.(stackTracer)
 		if stack_ok && err_with_stack.StackTrace() != nil {
@@ -210,7 +228,17 @@ func stacktrace(err error) *errors.StackTrace {
 			break
 		}
 	}
-	//TODO(danilo): genereate stack trace if stack is nil
+	return stack
+}
+
+func stacktrace(err error, skip int) *errors.StackTrace {
+	stack := get_stacktrace(err)
+	if stack == nil {
+		stack = gen_stacktrace(err, skip+1)
+	}
+	if len(stack) > DefaultMax {
+		stack = stack[:DefaultMax]
+	}
 	return &stack
 }
 

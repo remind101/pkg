@@ -25,9 +25,8 @@ func TestReport(t *testing.T) {
 			method = fmt.Sprintf("%n", stack[0])
 		}
 
-		if got, want := method, "reporter.TestReport"; got != want {
-			//TODO(danilo): fix this test once a default stack trace is generated
-			//t.Fatalf("expected the first backtrace line to be this function")
+		if got, want := method, "TestReport"; got != want {
+			t.Fatalf("expected the first stacktrace method to be %v, got %v", want, got)
 		}
 
 		return nil
