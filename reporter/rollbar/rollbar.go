@@ -9,7 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/remind101/pkg/reporter"
-	"github.com/remind101/pkg/reporter/rollbar/internal/rollbar"
+	"github.com/stvp/rollbar"
 )
 
 const ErrorLevel = "error"

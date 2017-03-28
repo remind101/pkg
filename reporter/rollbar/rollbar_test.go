@@ -12,7 +12,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/remind101/pkg/reporter"
-	"github.com/remind101/pkg/reporter/rollbar/internal/rollbar"
+	"github.com/stvp/rollbar"
 )
 
 func TestIsAReporter(t *testing.T) {
