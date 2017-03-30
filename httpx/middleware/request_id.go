@@ -42,6 +42,13 @@ func (h *RequestID) ServeHTTPContext(ctx context.Context, w http.ResponseWriter,
 	return h.handler.ServeHTTPContext(ctx, w, r)
 }
 
+func AddRequestIDToCtx(h httpx.Handler) httpx.Handler {
+	return httpx.HandlerFunc(func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+		ctx = httpx.WithRequestID(ctx, DefaultRequestIDExtractor(req))
+		return h.ServeHTTPContext(ctx, rw, req)
+	})
+}
+
 // HeaderExtractor returns a function that can extract a request id from a list
 // of headers.
 func HeaderExtractor(headers []string) func(*http.Request) string {

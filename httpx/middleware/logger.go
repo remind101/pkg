@@ -70,3 +70,7 @@ func (h *Logger) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r 
 
 	return err
 }
+
+func LogRequest(h httpx.Handler) httpx.Handler {
+	return httpx.HandlerFunc(Log(h).ServeHTTPContext)
+}

@@ -36,3 +36,24 @@ func TestLogger(t *testing.T) {
 		t.Fatalf("%s; want %s", got, want)
 	}
 }
+
+func TestFunctionalLogger(t *testing.T) {
+	b := new(bytes.Buffer)
+
+	h := LogTo(httpx.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+		w.WriteHeader(201)
+		return nil
+	}), stdLogger(b))
+
+	ctx := context.Background()
+	resp := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/", nil)
+
+	if err := LogRequest(h).ServeHTTPContext(ctx, resp, req); err != nil {
+		t.Fatal(err)
+	}
+
+	if got, want := b.String(), "request_id= request.start method=GET path=/\nrequest_id= request.complete status=201\n"; got != want {
+		t.Fatalf("%s; want %s", got, want)
+	}
+}

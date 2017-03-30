@@ -68,3 +68,15 @@ func BasicAuth(h httpx.Handler, user, pass, realm string) *BasicAuther {
 		Handler: h,
 	}
 }
+
+func BasicAuthWithUserPass(user, pass string) *BasicAuther {
+	return &BasicAuther{
+		User: user,
+		Pass: pass,
+	}
+}
+
+func (a *BasicAuther) Authenticate(h httpx.Handler) httpx.Handler {
+	a.Handler = h
+	return httpx.HandlerFunc(a.ServeHTTPContext)
+}
