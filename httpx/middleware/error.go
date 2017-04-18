@@ -11,10 +11,28 @@ import (
 
 type ErrorHandlerFunc func(context.Context, error, http.ResponseWriter, *http.Request)
 
+type temporaryError interface {
+	Temporary() bool // Is the error temporary?
+}
+
+type timeoutError interface {
+	Timeout() bool // Is the error a timeout?
+}
+
 // DefaultErrorHandler is an error handler that will respond with the error
 // message and a 500 status.
 var DefaultErrorHandler = func(ctx context.Context, err error, w http.ResponseWriter, r *http.Request) {
-	http.Error(w, err.Error(), http.StatusInternalServerError)
+	status := http.StatusInternalServerError
+
+	if e, ok := err.(temporaryError); ok && e.Temporary() {
+		status = http.StatusServiceUnavailable
+	}
+
+	if e, ok := err.(timeoutError); ok && e.Timeout() {
+		status = http.StatusServiceUnavailable
+	}
+
+	http.Error(w, err.Error(), status)
 }
 
 // ReportingErrorHandler is an error handler that will report the error and respond
