@@ -25,18 +25,23 @@ type Config struct {
 	Endpoint    string
 }
 
-type hbReporter struct {
+type HbReporter struct {
 	client *honeybadger.Client
 }
 
 // NewReporter returns a new Reporter instance.
-func NewReporter(cfg Config) *hbReporter {
+func NewReporter(cfg Config) *HbReporter {
 	hbCfg := honeybadger.Configuration{}
 	hbCfg.APIKey = cfg.ApiKey
 	hbCfg.Env = cfg.Environment
 	hbCfg.Endpoint = cfg.Endpoint
 
-	return &hbReporter{honeybadger.New(hbCfg)}
+	return &HbReporter{honeybadger.New(hbCfg)}
+}
+
+// exposes honeybadger config for unit tests
+func (r *HbReporter) GetConfig() *honeybadger.Configuration {
+	return r.client.Config
 }
 
 func makeHoneybadgerFrames(stack errors.StackTrace) []*honeybadger.Frame {
@@ -63,7 +68,7 @@ func makeHoneybadgerError(err *reporter.Error) honeybadger.Error {
 }
 
 // Report reports the error to honeybadger.
-func (r *hbReporter) Report(ctx context.Context, err error) error {
+func (r *HbReporter) Report(ctx context.Context, err error) error {
 	extras := []interface{}{}
 
 	if e, ok := err.(*reporter.Error); ok {
