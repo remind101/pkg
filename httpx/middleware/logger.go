@@ -13,29 +13,38 @@ import (
 	"golang.org/x/net/context"
 )
 
+type loggerGenerator func(context.Context, *http.Request) logger.Logger
+
 // StdoutLogger is a logger.Logger generator that generates a logger that writes
 // to stdout.
-var StdoutLogger = stdLogger(os.Stdout)
+func StdoutLogger(l logger.Level) loggerGenerator {
+	return stdLogger(l, os.Stdout)
+}
+
+var DefaultLogger = StdoutLogger(logger.ALL)
 
 // LogTo is an httpx middleware that wraps the handler to insert a logger and
 // log the request to it.
-func LogTo(h httpx.Handler, f func(context.Context, *http.Request) logger.Logger) httpx.Handler {
-	return InsertLogger(Log(h), f)
+func LogTo(h httpx.Handler, g loggerGenerator) httpx.Handler {
+	return InsertLogger(Log(h), g)
 }
 
 // InsertLogger returns an httpx.Handler middleware that will call f to generate
 // a logger, then insert it into the context.
-func InsertLogger(h httpx.Handler, f func(context.Context, *http.Request) logger.Logger) httpx.Handler {
+func InsertLogger(h httpx.Handler, g loggerGenerator) httpx.Handler {
 	return httpx.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-		l := f(ctx, r)
+		l := g(ctx, r)
 		ctx = logger.WithLogger(ctx, l)
 		return h.ServeHTTPContext(ctx, w, r)
 	})
 }
 
-func stdLogger(out io.Writer) func(context.Context, *http.Request) logger.Logger {
+func stdLogger(level logger.Level, out io.Writer) loggerGenerator {
 	return func(ctx context.Context, r *http.Request) logger.Logger {
-		return logger.New(log.New(out, fmt.Sprintf("request_id=%s ", httpx.RequestID(ctx)), 0))
+		return logger.New(
+			log.New(out, fmt.Sprintf("request_id=%s ", httpx.RequestID(ctx)), 0),
+			level,
+		)
 	}
 }
 
