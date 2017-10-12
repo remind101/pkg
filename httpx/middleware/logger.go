@@ -15,14 +15,16 @@ import (
 
 type loggerGenerator func(context.Context, *http.Request) logger.Logger
 
-// 
+// returns a loggerGenerator that generates a loggers that write to STDOUT
+// with the level parsed from the string (eg "info")
+// If the string isnt parsable, it defaults to "debug"
 func StdoutLoggerWithLevel(lvl string) loggerGenerator {
 	l := logger.ParseLevel(lvl)
 	return stdLogger(l, os.Stdout)
 }
 
-// StdoutLogger is a logger.Logger generator that generates a logger that writes
-// to stdout with level debug
+// Legacy interface, returns a loggerGenerator that logs at DEBUG to stdout.
+// Use StdoutLoggerWithLevel() instead.
 var StdoutLogger = stdLogger(logger.DEBUG, os.Stdout)
 
 // LogTo is an httpx middleware that wraps the handler to insert a logger and
