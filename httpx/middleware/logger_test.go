@@ -45,7 +45,7 @@ func TestLoggerUnderLevel(t *testing.T) {
 	h := LogTo(httpx.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 		w.WriteHeader(201)
 		return nil
-	}), stdLogger(logger.WARN, b))
+	}), stdLogger(logger.ERROR, b))
 
 	ctx := context.Background()
 	resp := httptest.NewRecorder()

@@ -42,7 +42,7 @@ func testInfo(msg string, pairs ...interface{}) string {
 func TestLogLevel(t *testing.T) {
 
 	b := new(bytes.Buffer)
-	l := New(log.New(b, "", 0), WARN)
+	l := New(log.New(b, "", 0), ERROR)
 	Info(WithLogger(context.Background(), l), "test info")
 	if got, want := b.String(), ""; got != want {
 		t.Fatalf("ontext Logger => %q; want %q", got, want)
