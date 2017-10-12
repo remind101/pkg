@@ -15,9 +15,7 @@ type Level int
 
 const (
 	OFF Level = iota
-	CRIT
 	ERROR
-	WARN
 	INFO
 	DEBUG
 )
@@ -26,12 +24,8 @@ func ParseLevel(lvl string) Level {
 	switch strings.ToLower(lvl) {
 	case "off":
 		return OFF
-	case "crit":
-		return CRIT
 	case "error":
 		return ERROR
-	case "warn":
-		return WARN
 	case "info":
 		return INFO
 	case "debug":
@@ -45,9 +39,7 @@ func ParseLevel(lvl string) Level {
 type Logger interface {
 	Debug(msg string, pairs ...interface{})
 	Info(msg string, pairs ...interface{})
-	Warn(msg string, pairs ...interface{})
 	Error(msg string, pairs ...interface{})
-	Crit(msg string, pairs ...interface{})
 }
 
 var DefaultLogLevel = INFO
@@ -81,9 +73,7 @@ func (l *logger) Log(level Level, msg string, pairs ...interface{}) {
 
 func (l *logger) Debug(msg string, pairs ...interface{}) { l.Log(DEBUG, msg, pairs...) }
 func (l *logger) Info(msg string, pairs ...interface{})  { l.Log(INFO, msg, pairs...) }
-func (l *logger) Warn(msg string, pairs ...interface{})  { l.Log(WARN, msg, pairs...) }
 func (l *logger) Error(msg string, pairs ...interface{}) { l.Log(ERROR, msg, pairs...) }
-func (l *logger) Crit(msg string, pairs ...interface{})  { l.Log(CRIT, msg, pairs...) }
 
 func (l *logger) message(pairs ...interface{}) string {
 	if len(pairs) == 1 {
@@ -135,21 +125,9 @@ func Debug(ctx context.Context, msg string, pairs ...interface{}) {
 	})
 }
 
-func Warn(ctx context.Context, msg string, pairs ...interface{}) {
-	withLogger(ctx, func(l Logger) {
-		l.Warn(msg, pairs...)
-	})
-}
-
 func Error(ctx context.Context, msg string, pairs ...interface{}) {
 	withLogger(ctx, func(l Logger) {
 		l.Error(msg, pairs...)
-	})
-}
-
-func Crit(ctx context.Context, msg string, pairs ...interface{}) {
-	withLogger(ctx, func(l Logger) {
-		l.Crit(msg, pairs...)
 	})
 }
 
