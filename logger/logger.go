@@ -20,8 +20,26 @@ const (
 	WARN
 	INFO
 	DEBUG
-	ALL
 )
+
+func ParseLevel(lvl string) Level {
+	switch strings.ToLower(lvl) {
+	case "off":
+		return OFF
+	case "crit":
+		return CRIT
+	case "error":
+		return ERROR
+	case "warn":
+		return WARN
+	case "info":
+		return INFO
+	case "debug":
+		return DEBUG
+	default:
+		return DEBUG
+	}
+}
 
 // Logger represents a structured leveled logger.
 type Logger interface {

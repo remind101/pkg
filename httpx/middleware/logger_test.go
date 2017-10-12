@@ -19,7 +19,7 @@ func TestLogger(t *testing.T) {
 	h := LogTo(httpx.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 		w.WriteHeader(201)
 		return nil
-	}), stdLogger(logger.ALL, b))
+	}), stdLogger(logger.DEBUG, b))
 
 	ctx := context.Background()
 	resp := httptest.NewRecorder()

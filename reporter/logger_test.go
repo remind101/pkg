@@ -21,7 +21,7 @@ func TestLogReporter(t *testing.T) {
 
 	for i, tt := range tests {
 		b := new(bytes.Buffer)
-		l := logger.New(log.New(b, "request_id=1234 ", 0))
+		l := logger.New(log.New(b, "request_id=1234 ", 0), logger.INFO)
 		h := &LogReporter{}
 
 		ctx := logger.WithLogger(context.Background(), l)
