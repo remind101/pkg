@@ -11,44 +11,69 @@ import (
 	"golang.org/x/net/context"
 )
 
+type Level int
+
+const (
+	OFF Level = iota
+	ERROR
+	INFO
+	DEBUG
+)
+
+func ParseLevel(lvl string) Level {
+	switch strings.ToLower(lvl) {
+	case "off":
+		return OFF
+	case "error":
+		return ERROR
+	case "info":
+		return INFO
+	case "debug":
+		return DEBUG
+	default:
+		return DEBUG
+	}
+}
+
 // Logger represents a structured leveled logger.
 type Logger interface {
 	Debug(msg string, pairs ...interface{})
 	Info(msg string, pairs ...interface{})
-	Warn(msg string, pairs ...interface{})
 	Error(msg string, pairs ...interface{})
-	Crit(msg string, pairs ...interface{})
 }
 
-var DefaultLogger = New(log.New(os.Stdout, "[default] ", log.LstdFlags))
+var DefaultLogLevel = INFO
+var DefaultLogger = New(log.New(os.Stdout, "[default] ", log.LstdFlags), DefaultLogLevel)
 
 // logger is an implementation of the Logger interface backed by the stdlib's
 // logging facility. This is a fairly naive implementation, and it's probably
 // better to use something like https://github.com/inconshreveable/log15 which
 // offers real structure logging.
 type logger struct {
+	Level
 	*log.Logger
 }
 
 // New wraps the log.Logger to implement the Logger interface.
-func New(l *log.Logger) Logger {
+func New(l *log.Logger, ll Level) Logger {
 	return &logger{
 		Logger: l,
+		Level:  ll,
 	}
 }
 
 // Log logs the pairs in logfmt. It will treat consecutive arguments as a key
 // value pair. Given the input:
-func (l *logger) Log(msg string, pairs ...interface{}) {
-	m := l.message(pairs...)
-	l.Println(msg, m)
+func (l *logger) Log(level Level, msg string, pairs ...interface{}) {
+	if level <= l.Level {
+		m := l.message(pairs...)
+		l.Println(msg, m)
+	}
 }
 
-func (l *logger) Debug(msg string, pairs ...interface{}) { l.Log(msg, pairs...) }
-func (l *logger) Info(msg string, pairs ...interface{})  { l.Log(msg, pairs...) }
-func (l *logger) Warn(msg string, pairs ...interface{})  { l.Log(msg, pairs...) }
-func (l *logger) Error(msg string, pairs ...interface{}) { l.Log(msg, pairs...) }
-func (l *logger) Crit(msg string, pairs ...interface{})  { l.Log(msg, pairs...) }
+func (l *logger) Debug(msg string, pairs ...interface{}) { l.Log(DEBUG, msg, pairs...) }
+func (l *logger) Info(msg string, pairs ...interface{})  { l.Log(INFO, msg, pairs...) }
+func (l *logger) Error(msg string, pairs ...interface{}) { l.Log(ERROR, msg, pairs...) }
 
 func (l *logger) message(pairs ...interface{}) string {
 	if len(pairs) == 1 {
@@ -100,21 +125,9 @@ func Debug(ctx context.Context, msg string, pairs ...interface{}) {
 	})
 }
 
-func Warn(ctx context.Context, msg string, pairs ...interface{}) {
-	withLogger(ctx, func(l Logger) {
-		l.Warn(msg, pairs...)
-	})
-}
-
 func Error(ctx context.Context, msg string, pairs ...interface{}) {
 	withLogger(ctx, func(l Logger) {
 		l.Error(msg, pairs...)
-	})
-}
-
-func Crit(ctx context.Context, msg string, pairs ...interface{}) {
-	withLogger(ctx, func(l Logger) {
-		l.Crit(msg, pairs...)
 	})
 }
 

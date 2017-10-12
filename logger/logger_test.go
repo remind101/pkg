@@ -33,14 +33,25 @@ func TestLogger(t *testing.T) {
 
 func testInfo(msg string, pairs ...interface{}) string {
 	b := new(bytes.Buffer)
-	l := New(log.New(b, "", 0))
+	l := New(log.New(b, "", 0), INFO)
 	l.Info(msg, pairs...)
 	return b.String()
 }
 
+// check that when set to a high level (WARN), a lower log (INFO) doesnt print
+func TestLogLevel(t *testing.T) {
+
+	b := new(bytes.Buffer)
+	l := New(log.New(b, "", 0), ERROR)
+	Info(WithLogger(context.Background(), l), "test info")
+	if got, want := b.String(), ""; got != want {
+		t.Fatalf("ontext Logger => %q; want %q", got, want)
+	}
+}
+
 func TestWithContextLogger(t *testing.T) {
 	b := new(bytes.Buffer)
-	l := New(log.New(b, "", 0))
+	l := New(log.New(b, "", 0), INFO)
 	Info(WithLogger(context.Background(), l), "test")
 	if got, want := b.String(), "test \n"; got != want {
 		t.Fatalf("Without Context Logger => %q; want %q", got, want)
@@ -51,7 +62,7 @@ func TestWithoutContextLogger(t *testing.T) {
 	origFallBackLogger := DefaultLogger
 	defer func() { DefaultLogger = origFallBackLogger }()
 	b := new(bytes.Buffer)
-	DefaultLogger = New(log.New(b, "", 0))
+	DefaultLogger = New(log.New(b, "", 0), INFO)
 	Info(context.Background(), "test")
 	if got, want := b.String(), "test \n"; got != want {
 		t.Fatalf("Without Context Logger => %q; want %q", got, want)

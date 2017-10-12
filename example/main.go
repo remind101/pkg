@@ -86,7 +86,7 @@ func main() {
 
 	// Adds a logger to the context.Context that will log to stdout,
 	// prefixed with the request id.
-	h = middleware.LogTo(h, middleware.StdoutLogger)
+	h = middleware.LogTo(h, middleware.StdoutLoggerWithLevel("debug"))
 
 	// Adds the request id to the context.
 	h = middleware.ExtractRequestID(h)

@@ -13,29 +13,42 @@ import (
 	"golang.org/x/net/context"
 )
 
-// StdoutLogger is a logger.Logger generator that generates a logger that writes
-// to stdout.
-var StdoutLogger = stdLogger(os.Stdout)
+type loggerGenerator func(context.Context, *http.Request) logger.Logger
+
+// returns a loggerGenerator that generates a loggers that write to STDOUT
+// with the level parsed from the string (eg "info")
+// If the string isnt parsable, it defaults to "debug"
+func StdoutLoggerWithLevel(lvl string) loggerGenerator {
+	l := logger.ParseLevel(lvl)
+	return stdLogger(l, os.Stdout)
+}
+
+// Legacy interface, returns a loggerGenerator that logs at DEBUG to stdout.
+// Use StdoutLoggerWithLevel() instead.
+var StdoutLogger = stdLogger(logger.DEBUG, os.Stdout)
 
 // LogTo is an httpx middleware that wraps the handler to insert a logger and
 // log the request to it.
-func LogTo(h httpx.Handler, f func(context.Context, *http.Request) logger.Logger) httpx.Handler {
-	return InsertLogger(Log(h), f)
+func LogTo(h httpx.Handler, g loggerGenerator) httpx.Handler {
+	return InsertLogger(Log(h), g)
 }
 
 // InsertLogger returns an httpx.Handler middleware that will call f to generate
 // a logger, then insert it into the context.
-func InsertLogger(h httpx.Handler, f func(context.Context, *http.Request) logger.Logger) httpx.Handler {
+func InsertLogger(h httpx.Handler, g loggerGenerator) httpx.Handler {
 	return httpx.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-		l := f(ctx, r)
+		l := g(ctx, r)
 		ctx = logger.WithLogger(ctx, l)
 		return h.ServeHTTPContext(ctx, w, r)
 	})
 }
 
-func stdLogger(out io.Writer) func(context.Context, *http.Request) logger.Logger {
+func stdLogger(level logger.Level, out io.Writer) loggerGenerator {
 	return func(ctx context.Context, r *http.Request) logger.Logger {
-		return logger.New(log.New(out, fmt.Sprintf("request_id=%s ", httpx.RequestID(ctx)), 0))
+		return logger.New(
+			log.New(out, fmt.Sprintf("request_id=%s ", httpx.RequestID(ctx)), 0),
+			level,
+		)
 	}
 }
 
