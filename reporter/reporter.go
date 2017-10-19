@@ -11,6 +11,9 @@ import (
 	"golang.org/x/net/context"
 )
 
+// DefaultLevel is the default level a Report uses when reporting an error.
+const DefaultLevel = "error"
+
 // DefaultMax is the default maximum number of lines to show from the stack trace.
 var DefaultMax = 1024
 
@@ -21,15 +24,15 @@ type Reporter interface {
 	// about the error, including a stack trace and any contextual
 	// information. Implementers should type assert the error to an *Error
 	// if they want to report the stack trace.
-	Report(context.Context, error) error
+	ReportWithLevel(context.Context, string, error) error
 }
 
 // ReporterFunc is a function signature that conforms to the Reporter interface.
-type ReporterFunc func(context.Context, error) error
+type ReporterFunc func(context.Context, string, error) error
 
 // Report implements the Reporter interface.
-func (f ReporterFunc) Report(ctx context.Context, err error) error {
-	return f(ctx, err)
+func (f ReporterFunc) ReportWithLevel(ctx context.Context, level string, err error) error {
+	return f(ctx, level, err)
 }
 
 // FromContext extracts a Reporter from a context.Context.
@@ -68,16 +71,20 @@ func newError(ctx context.Context, err error) *Error {
 
 // Report wraps the err as an Error and reports it the the Reporter embedded
 // within the context.Context.
-func Report(ctx context.Context, err error) error {
+func ReportWithLevel(ctx context.Context, level string, err error) error {
 	e := newError(ctx, err)
 
 	if r, ok := FromContext(ctx); ok {
-		return r.Report(ctx, e)
+		return r.ReportWithLevel(ctx, level, e)
 	} else {
 		panic("No reporter in provided context.")
 	}
 
 	return nil
+}
+
+func Report(ctx context.Context, err error) error {
+	return ReportWithLevel(ctx, DefaultLevel, err)
 }
 
 // Monitors and reports panics. Useful in goroutines.

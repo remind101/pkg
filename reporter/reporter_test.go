@@ -12,7 +12,7 @@ import (
 var errBoom = errors.New("boom")
 
 func TestReport(t *testing.T) {
-	r := ReporterFunc(func(ctx context.Context, err error) error {
+	r := ReporterFunc(func(ctx context.Context, level string, err error) error {
 		e := err.(*Error)
 
 		if e.Request.Header.Get("Content-Type") != "application/json" {
@@ -37,8 +37,27 @@ func TestReport(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	AddRequest(ctx, req)
 
-	if err := Report(ctx, errBoom); err != nil {
+	if err := ReportWithLevel(ctx, "error", errBoom); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestReportWithLevel(t *testing.T) {
+	var calledWithLevel string
+
+	r := ReporterFunc(func(ctx context.Context, level string, err error) error {
+		calledWithLevel = level
+		return nil
+	})
+	ctx := WithReporter(context.Background(), r)
+	err := ReportWithLevel(ctx, "warning", errBoom)
+
+	if err != nil {
+		t.Fatalf("unexpected error happened %v", err)
+	}
+
+	if got, want := calledWithLevel, "warning"; got != want {
+		t.Fatalf("expected reporter to have been called with level %v, got %v", want, got)
 	}
 }
 
@@ -59,7 +78,7 @@ func TestMonitor(t *testing.T) {
 		}
 	}
 	var reportedError error
-	r := ReporterFunc(func(ctx context.Context, err error) error {
+	r := ReporterFunc(func(ctx context.Context, level string, err error) error {
 		reportedError = err
 		return nil
 	})

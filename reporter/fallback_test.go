@@ -13,10 +13,10 @@ func TestFallback(t *testing.T) {
 	errTimeout := errors.New("net: timeout")
 
 	r := &FallbackReporter{
-		Reporter: ReporterFunc(func(ctx context.Context, err error) error {
+		Reporter: ReporterFunc(func(ctx context.Context, level string, err error) error {
 			return errTimeout
 		}),
-		Fallback: ReporterFunc(func(ctx context.Context, err error) error {
+		Fallback: ReporterFunc(func(ctx context.Context, level string, err error) error {
 			called = true
 
 			if got, want := err, errTimeout; got != want {
@@ -27,7 +27,8 @@ func TestFallback(t *testing.T) {
 		}),
 	}
 
-	r.Report(context.Background(), errBoom)
+	ctx := WithReporter(context.Background(), r)
+	Report(ctx, errBoom)
 
 	if !called {
 		t.Fatal("fallback not called")

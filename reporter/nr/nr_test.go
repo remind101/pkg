@@ -36,9 +36,8 @@ func TestReport(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = newrelic.WithTx(ctx, tx)
-
-	r := NewReporter()
-	r.Report(ctx, errBoomMore)
+	ctx = reporter.WithReporter(ctx, NewReporter())
+	reporter.Report(ctx, errBoomMore)
 }
 
 type TestReporter struct {
