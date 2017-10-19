@@ -85,7 +85,8 @@ func TestHb2ReportsErrorContext(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		r.Report(context.Background(), tt.err)
+		ctx := reporter.WithReporter(context.Background(), r)
+		reporter.Report(ctx, tt.err)
 
 		select {
 		case v := <-h.LastRequestBodyChan:

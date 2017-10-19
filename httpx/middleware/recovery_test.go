@@ -18,7 +18,7 @@ func TestRecovery(t *testing.T) {
 	)
 
 	h := &Recovery{
-		Reporter: reporter.ReporterFunc(func(ctx context.Context, err error) error {
+		Reporter: reporter.ReporterFunc(func(ctx context.Context, level string, err error) error {
 			called = true
 
 			e := err.(*reporter.Error)
@@ -59,7 +59,7 @@ func TestRecovery(t *testing.T) {
 
 func TestRecoveryPanicString(t *testing.T) {
 	h := &Recovery{
-		Reporter: reporter.ReporterFunc(func(ctx context.Context, err error) error {
+		Reporter: reporter.ReporterFunc(func(ctx context.Context, level string, err error) error {
 			return nil
 		}),
 		handler: httpx.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {

@@ -16,7 +16,7 @@ func NewLogReporter() *LogReporter {
 }
 
 // Report logs the error to the Logger.
-func (h *LogReporter) Report(ctx context.Context, err error) error {
+func (h *LogReporter) ReportWithLevel(ctx context.Context, level string, err error) error {
 	var file, line string
 	var stack errors.StackTrace
 
@@ -31,6 +31,12 @@ func (h *LogReporter) Report(ctx context.Context, err error) error {
 		line = "0"
 	}
 
-	logger.Error(ctx, "", "error", fmt.Sprintf(`"%v"`, err), "line", line, "file", file)
+	if level == "debug" {
+		logger.Debug(ctx, "", "debug", fmt.Sprintf(`"%v"`, err), "line", line, "file", file)
+	} else if level == "info" {
+		logger.Info(ctx, "", "info", fmt.Sprintf(`"%v"`, err), "line", line, "file", file)
+	} else {
+		logger.Error(ctx, "", level, fmt.Sprintf(`"%v"`, err), "line", line, "file", file)
+	}
 	return nil
 }

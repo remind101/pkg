@@ -26,7 +26,7 @@ func ConfigureReporter(token, environment string) {
 	rollbar.Environment = environment
 }
 
-func (r *rollbarReporter) Report(ctx context.Context, err error) error {
+func (r *rollbarReporter) ReportWithLevel(ctx context.Context, level string, err error) error {
 	var request *http.Request
 	extraFields := []*rollbar.Field{}
 	var stackTrace rollbar.Stack = nil
@@ -42,22 +42,22 @@ func (r *rollbarReporter) Report(ctx context.Context, err error) error {
 		err = e.Cause() // Report the actual cause of the error.
 	}
 
-	reportToRollbar(request, err, stackTrace, extraFields)
+	reportToRollbar(level, request, err, stackTrace, extraFields)
 	return nil
 }
 
-func reportToRollbar(request *http.Request, err error, stack rollbar.Stack, extraFields []*rollbar.Field) {
+func reportToRollbar(level string, request *http.Request, err error, stack rollbar.Stack, extraFields []*rollbar.Field) {
 	if request != nil {
 		if stack != nil {
-			rollbar.RequestErrorWithStack(ErrorLevel, request, err, stack, extraFields...)
+			rollbar.RequestErrorWithStack(level, request, err, stack, extraFields...)
 		} else {
-			rollbar.RequestError(ErrorLevel, request, err, extraFields...)
+			rollbar.RequestError(level, request, err, extraFields...)
 		}
 	} else {
 		if stack != nil {
-			rollbar.ErrorWithStack(ErrorLevel, err, stack, extraFields...)
+			rollbar.ErrorWithStack(level, err, stack, extraFields...)
 		} else {
-			rollbar.Error(ErrorLevel, err, extraFields...)
+			rollbar.Error(level, err, extraFields...)
 		}
 	}
 }

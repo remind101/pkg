@@ -68,7 +68,7 @@ func makeHoneybadgerError(err *reporter.Error) honeybadger.Error {
 }
 
 // Report reports the error to honeybadger.
-func (r *HbReporter) Report(ctx context.Context, err error) error {
+func (r *HbReporter) ReportWithLevel(ctx context.Context, level string, err error) error {
 	extras := []interface{}{}
 
 	if e, ok := err.(*reporter.Error); ok {

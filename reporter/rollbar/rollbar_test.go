@@ -47,7 +47,8 @@ func TestReportsThingsToRollbar(t *testing.T) {
 	ConfigureReporter("token", "test")
 	rollbar.Endpoint = ts.URL + "/"
 	fmt.Println(ts.URL)
-	Reporter.Report(context.Background(), err)
+	ctx := reporter.WithReporter(context.Background(), Reporter)
+	reporter.Report(ctx, err)
 	rollbar.Wait()
 
 	paramValue := body["data"].(map[string]interface{})["request"].(map[string]interface{})["POST"].(map[string]interface{})["param1"]

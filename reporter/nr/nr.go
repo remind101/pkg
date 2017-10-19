@@ -19,7 +19,7 @@ func NewReporter() *Reporter {
 	return &Reporter{}
 }
 
-func (r *Reporter) Report(ctx context.Context, err error) error {
+func (r *Reporter) ReportWithLevel(ctx context.Context, level string, err error) error {
 	if tx, ok := newrelic.FromContext(ctx); ok {
 		var (
 			exceptionType   string

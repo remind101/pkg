@@ -11,9 +11,9 @@ type FallbackReporter struct {
 	Fallback Reporter
 }
 
-func (r *FallbackReporter) Report(ctx context.Context, err error) error {
-	if err2 := r.Reporter.Report(ctx, err); err2 != nil {
-		r.Fallback.Report(ctx, err2)
+func (r *FallbackReporter) ReportWithLevel(ctx context.Context, level string, err error) error {
+	if err2 := r.Reporter.ReportWithLevel(ctx, level, err); err2 != nil {
+		r.Fallback.ReportWithLevel(ctx, level, err2)
 		return err2
 	}
 

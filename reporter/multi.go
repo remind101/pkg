@@ -7,11 +7,11 @@ import "golang.org/x/net/context"
 // an error, a MutliError will be returned.
 type MultiReporter []Reporter
 
-func (r MultiReporter) Report(ctx context.Context, err error) error {
+func (r MultiReporter) ReportWithLevel(ctx context.Context, level string, err error) error {
 	var errors []error
 
 	for _, reporter := range r {
-		if err2 := reporter.Report(ctx, err); err2 != nil {
+		if err2 := reporter.ReportWithLevel(ctx, level, err); err2 != nil {
 			errors = append(errors, err2)
 		}
 	}
