@@ -1,6 +1,7 @@
 package reqsigssm
 
 import (
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ssm"
 	"github.com/remind101/pkg/httpx/middleware"
@@ -14,10 +15,14 @@ func NewWithPath(path string) (*middleware.StaticSigningKeyRepository, error) {
 	kmap := map[string]string{}
 	sess := session.Must(session.NewSession())
 	svc := ssm.New(sess)
+	in := &ssm.GetParametersByPathInput{
+		Path:           aws.String(path),
+		WithDecryption: aws.Bool(true),
+	}
 
-	err := svc.GetParametersByPathPages(path, func(out *ssm.GetParametersByPathOutput, cont bool) bool {
+	err := svc.GetParametersByPathPages(in, func(out *ssm.GetParametersByPathOutput, cont bool) bool {
 		for _, param := range out.Parameters {
-			kmap[*param.Name] = *param.Value
+			kmap[aws.StringValue(param.Name)] = aws.StringValue(param.Value)
 		}
 		return true
 	})
