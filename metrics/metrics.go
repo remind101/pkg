@@ -31,8 +31,6 @@ func SetEmpireDefaultTags() {
 	defaultTags["empire.app.name"] = os.Getenv("EMPIRE_APPNAME")
 	defaultTags["empire.app.process"] = os.Getenv("EMPIRE_PROCESS")
 	defaultTags["empire.app.release"] = os.Getenv("EMPIRE_RELEASE")
-	hostname, _ := os.Hostname()
-	defaultTags["container_id"] = hostname
 }
 
 func resetDefaultTags() {

@@ -46,7 +46,7 @@ func TestMetricTags(t *testing.T) {
 	assertDeepEqual(t, "app name and no tags", r.LastCountMetric, &intMetric{
 		metric{"testcount",
 			map[string]string{"empire.app.name": "testapp", "empire.app.process": "testprocess",
-				"empire.app.release": "v1", "container_id": hostname},
+				"empire.app.release": "v1"},
 			1.0},
 		42,
 	})
@@ -55,7 +55,7 @@ func TestMetricTags(t *testing.T) {
 	assertDeepEqual(t, "app name and some tags", r.LastCountMetric, &intMetric{
 		metric{"testcount",
 			map[string]string{"foo": "bar", "empire.app.name": "testapp", "empire.app.process": "testprocess",
-				"empire.app.release": "v1", "container_id": hostname},
+				"empire.app.release": "v1"},
 			1.0},
 		42,
 	})
