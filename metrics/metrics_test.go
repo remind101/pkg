@@ -38,7 +38,6 @@ func TestMetricTags(t *testing.T) {
 	os.Setenv("EMPIRE_APPNAME", "testapp")
 	os.Setenv("EMPIRE_PROCESS", "testprocess")
 	os.Setenv("EMPIRE_RELEASE", "v1")
-	hostname, _ := os.Hostname()
 	SetEmpireDefaultTags()
 	defer resetDefaultTags()
 
