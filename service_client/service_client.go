@@ -104,6 +104,7 @@ func (t *clientMetrics) RoundTrip(req *http.Request) (*http.Response, error) {
 
 type ServiceClient interface {
 	Do(ctx context.Context, method, path string, jsonData interface{}, targetObject interface{}) error
+	DoWithBearerAuth(ctx context.Context, method, path, access_token string, jsonData, targetObject interface{}) error
 }
 
 type serviceClient struct {
@@ -126,13 +127,26 @@ func NewServiceClient(serviceURL string) *serviceClient {
 }
 
 func (c *serviceClient) Do(ctx context.Context, method, path string, jsonData interface{}, targetObject interface{}) error {
+	return c.do(ctx, method, path, "", jsonData, targetObject)
+}
+
+func (c *serviceClient) DoWithBearerAuth(ctx context.Context, method, path, token string, jsonData interface{}, targetObject interface{}) error {
+	return c.do(ctx, method, path, token, jsonData, targetObject)
+}
+
+func (c *serviceClient) do(ctx context.Context, method, path, token string, jsonData interface{}, targetObject interface{}) error {
 	requestPath := httpx.ParseURL(c.serviceURL, path)
 	req, err := httpx.NewJSONRequest(method, requestPath, jsonData)
+
 	if err != nil {
 		return err
 	}
 
-	c.setBasicAuth(req)
+	if token == "" {
+		c.setBasicAuth(req)
+	} else {
+		c.setBearerAuth(req, token)
+	}
 
 	resp, err := c.client.Do(ctx, req)
 	if resp != nil {
@@ -160,6 +174,10 @@ func (c *serviceClient) setBasicAuth(req *http.Request) {
 
 	password, _ := c.serviceURL.User.Password()
 	req.SetBasicAuth(c.serviceURL.User.Username(), password)
+}
+
+func (c *serviceClient) setBearerAuth(req *http.Request, token string) {
+	req.Header.add("Authentication", fmt.Sprintf("Bearer %s", token))
 }
 
 func (c *serviceClient) checkResponse(resp *http.Response) error {
