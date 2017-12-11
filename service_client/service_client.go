@@ -177,7 +177,7 @@ func (c *serviceClient) setBasicAuth(req *http.Request) {
 }
 
 func (c *serviceClient) setBearerAuth(req *http.Request, token string) {
-	req.Header.add("Authentication", fmt.Sprintf("Bearer %s", token))
+	req.Header.Add("Authentication", fmt.Sprintf("Bearer %s", token))
 }
 
 func (c *serviceClient) checkResponse(resp *http.Response) error {
