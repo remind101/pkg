@@ -1,4 +1,4 @@
-package hermes
+package service_client
 
 import (
 	"encoding/json"
