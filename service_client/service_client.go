@@ -41,12 +41,14 @@ type serviceClient struct {
 	keyId            string
 	key              string
 	forwardedHeaders []string
+	logScrubber      Scrubber
 }
 
 type ServiceClientOpts struct {
 	IncludeForwardedHeaders []string
 	SigningKeyId            string
 	SigningKey              string
+	Scrubber                Scrubber
 }
 
 func NewServiceClient(serviceURL string) *serviceClient {
@@ -61,6 +63,9 @@ func NewServiceClientWithOpts(serviceURL string, opts ServiceClientOpts) *servic
 	httpClient := &http.Client{Transport: AggressiveTransport}
 	client := httpx.NewServiceClient(serviceURL, httpClient)
 	signer := httpsignatures.DefaultSha256Signer
+	if opts.Scrubber == nil {
+		opts.Scrubber = &NoopScrubber{}
+	}
 
 	return &serviceClient{
 		serviceURL:       u,
@@ -69,6 +74,7 @@ func NewServiceClientWithOpts(serviceURL string, opts ServiceClientOpts) *servic
 		keyId:            opts.SigningKeyId,
 		key:              opts.SigningKey,
 		forwardedHeaders: opts.IncludeForwardedHeaders,
+		logScrubber:      opts.Scrubber,
 	}
 }
 
@@ -137,7 +143,7 @@ func (c *serviceClient) trace(ctx context.Context, req *http.Request) func() {
 		span.Context(),
 		opentracing.HTTPHeaders,
 		opentracing.HTTPHeadersCarrier(req.Header))
-	span.SetTag("uri", req.URL.String())
+	span.SetTag("uri", c.logScrubber.Scrub(req.URL.String()))
 	return func() {
 		span.Finish()
 	}
