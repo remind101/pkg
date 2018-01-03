@@ -47,8 +47,6 @@ type ServiceClientOpts struct {
 	IncludeForwardedHeaders []string
 	SigningKeyId            string
 	SigningKey              string
-	serviceURL              *url.URL
-	client                  *httpx.Client
 }
 
 func NewServiceClient(serviceURL string) *serviceClient {
