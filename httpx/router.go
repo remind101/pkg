@@ -5,8 +5,9 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/gorilla/mux"
 	"context"
+
+	"github.com/gorilla/mux"
 )
 
 // Router is an httpx.Handler router.

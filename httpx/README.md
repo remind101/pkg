@@ -2,11 +2,7 @@
 
 Package httpx provides a layer of convenience over "net/http". Specifically:
 
-1. It's **[context.Context](https://godoc.org/context)** aware.
-   This is good for storing request specific parameters, such as a request ids
-   and for performing deadlines and cancellations across api boundaries in a
-   generic way.
-2. `httpx.Handler`'s return an `error` which makes handler implementations feel
+1. `httpx.Handler`'s return an `error` which makes handler implementations feel
    more idiomatic and reduces the chance of accidentally forgetting to return.
 
 The most important part of package httpx is the `Handler` interface, which is
@@ -20,7 +16,7 @@ type Handler interface {
 
 ## Usage
 
-In order to use the `httpx.Handler` interface, you need a compatible router. One is provided within this package that wraps [gorilla mux](https://github.com/gorilla/mux) to make it context.Context aware.
+In order to use the `httpx.Handler` interface, you need a compatible router. One is provided within this package that wraps [gorilla mux](https://github.com/gorilla/mux).
 
 ```go
 r := httpx.NewRouter()
