@@ -8,7 +8,7 @@ import (
 	"github.com/remind101/newrelic"
 	"github.com/remind101/pkg/httpx"
 	"github.com/stretchr/testify/mock"
-	"golang.org/x/net/context"
+	"context"
 )
 
 type tracerTest struct {

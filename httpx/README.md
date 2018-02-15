@@ -2,7 +2,7 @@
 
 Package httpx provides a layer of convenience over "net/http". Specifically:
 
-1. It's **[context.Context](https://godoc.org/golang.org/x/net/context)** aware.
+1. It's **[context.Context](https://godoc.org/context)** aware.
    This is good for storing request specific parameters, such as a request ids
    and for performing deadlines and cancellations across api boundaries in a
    generic way.

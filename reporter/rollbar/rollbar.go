@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/pkg/errors"
 	"github.com/remind101/pkg/reporter"

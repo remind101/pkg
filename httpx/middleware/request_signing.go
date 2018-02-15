@@ -8,7 +8,7 @@ import (
 	httpsignatures "github.com/99designs/httpsignatures-go"
 	"github.com/pkg/errors"
 	"github.com/remind101/pkg/httpx"
-	"golang.org/x/net/context"
+	"context"
 )
 
 // RequestSignatureError should be used in your error handling middleware.

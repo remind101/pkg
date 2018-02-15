@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"testing"
 
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/remind101/pkg/reporter"
 	"github.com/stvp/rollbar"

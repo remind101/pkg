@@ -7,7 +7,7 @@ import (
 	"github.com/remind101/newrelic"
 	"github.com/remind101/pkg/reporter"
 	"github.com/remind101/pkg/reporter/util"
-	"golang.org/x/net/context"
+	"context"
 )
 
 // Ensure that Reporter implements the reporter.Reporter interface.

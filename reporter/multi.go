@@ -1,6 +1,6 @@
 package reporter
 
-import "golang.org/x/net/context"
+import "context"
 
 // MultiReporter is an implementation of the Reporter interface that reports the
 // error to multiple Reporters. If any of the individual error reporters returns

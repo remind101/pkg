@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/remind101/pkg/httpx"
-	"golang.org/x/net/context"
+	"context"
 )
 
 func TestBackground(t *testing.T) {

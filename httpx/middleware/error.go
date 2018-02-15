@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/remind101/pkg/httpx"
-	"golang.org/x/net/context"
+	"context"
 )
 
 type ErrorHandlerFunc func(context.Context, error, http.ResponseWriter, *http.Request)
