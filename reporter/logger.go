@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/remind101/pkg/logger"
-	"golang.org/x/net/context"
+	"context"
 )
 
 // LogReporter is a Handler that logs the error to a log.Logger.

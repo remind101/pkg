@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"golang.org/x/net/context"
+	"context"
 	"github.com/remind101/pkg/retry"
 )
 

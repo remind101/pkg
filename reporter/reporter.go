@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
+	"context"
 )
 
 // DefaultLevel is the default level a Report uses when reporting an error.

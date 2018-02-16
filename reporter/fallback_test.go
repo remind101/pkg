@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"golang.org/x/net/context"
+	"context"
 )
 
 func TestFallback(t *testing.T) {

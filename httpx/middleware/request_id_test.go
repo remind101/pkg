@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/remind101/pkg/httpx"
-	"golang.org/x/net/context"
+	"context"
 )
 
 func TestRequestID(t *testing.T) {

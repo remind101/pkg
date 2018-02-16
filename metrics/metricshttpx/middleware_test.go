@@ -10,7 +10,7 @@ import (
 	"github.com/remind101/pkg/httpx/middleware"
 	"github.com/remind101/pkg/metrics"
 	"github.com/remind101/pkg/metrics/metricshttpx"
-	"golang.org/x/net/context"
+	"context"
 )
 
 func TestMiddlewareReportsResponseTimeMetrics(t *testing.T) {

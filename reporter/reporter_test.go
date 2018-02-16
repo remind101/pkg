@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"testing"
 
-	"golang.org/x/net/context"
+	"context"
 )
 
 var errBoom = errors.New("boom")

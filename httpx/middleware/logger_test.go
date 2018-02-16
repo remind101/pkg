@@ -10,7 +10,7 @@ import (
 
 	"github.com/remind101/pkg/httpx"
 	"github.com/remind101/pkg/logger"
-	"golang.org/x/net/context"
+	"context"
 )
 
 func TestLogger(t *testing.T) {

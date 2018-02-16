@@ -6,7 +6,7 @@ import (
 
 	"github.com/newrelic/go-agent"
 	"github.com/remind101/pkg/httpx"
-	"golang.org/x/net/context"
+	"context"
 )
 
 type NewRelicGoTracer struct {

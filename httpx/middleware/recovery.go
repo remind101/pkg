@@ -6,7 +6,7 @@ import (
 
 	"github.com/remind101/pkg/httpx"
 	"github.com/remind101/pkg/reporter"
-	"golang.org/x/net/context"
+	"context"
 )
 
 // Recovery is a middleware that will recover from panics and return the error.

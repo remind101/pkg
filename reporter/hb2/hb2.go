@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/remind101/pkg/reporter"
 	"github.com/remind101/pkg/reporter/hb2/internal/honeybadger-go"
-	"golang.org/x/net/context"
+	"context"
 )
 
 // Headers that won't be sent to honeybadger.
