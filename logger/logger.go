@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"golang.org/x/net/context"
+	"context"
 )
 
 type Level int

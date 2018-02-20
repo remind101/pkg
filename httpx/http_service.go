@@ -13,7 +13,7 @@ import (
 
 	"github.com/remind101/pkg/retry"
 
-	"golang.org/x/net/context"
+	"context"
 )
 
 type RoundTripper interface {

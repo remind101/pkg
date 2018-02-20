@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/remind101/pkg/httpx"
-	"golang.org/x/net/context"
+	"context"
 )
 
 type BasicAuther struct {

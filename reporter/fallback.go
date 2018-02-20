@@ -1,6 +1,6 @@
 package reporter
 
-import "golang.org/x/net/context"
+import "context"
 
 type FallbackReporter struct {
 	// The first reporter to call.

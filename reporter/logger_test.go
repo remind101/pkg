@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/remind101/pkg/logger"
-	"golang.org/x/net/context"
+	"context"
 )
 
 func TestLogReporter(t *testing.T) {

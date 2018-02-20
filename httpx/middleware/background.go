@@ -3,22 +3,20 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/remind101/pkg/httpx"
-	"golang.org/x/net/context"
-)
+	"context"
 
-// DefaultGenerator is the default context generator. Defaults to just use
-// context.Background().
-var DefaultGenerator = context.Background
+	"github.com/remind101/pkg/httpx"
+)
 
 // Background is middleware that implements the http.Handler interface to inject
 // an initial context object. Use this as the entry point from an http.Handler
 // server.
+//
+// This middleware is deprecated. There is no need to pass a context.Context
+// to handlers anymore, since a context object is available from the request. Once
+// we update the signature for httpx.Handler to remove the context parameter, this
+// middleware can be removed.
 type Background struct {
-	// Generate will be called to generate a context.Context for the
-	// request.
-	Generate func() context.Context
-
 	// The wrapped httpx.Handler to call down to.
 	handler httpx.Handler
 }
@@ -31,11 +29,7 @@ func BackgroundContext(h httpx.Handler) *Background {
 
 // ServeHTTP implements the http.Handler interface.
 func (h *Background) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx := h.Generate
-	if ctx == nil {
-		ctx = DefaultGenerator
-	}
-	h.ServeHTTPContext(ctx(), w, r)
+	h.ServeHTTPContext(r.Context(), w, r)
 }
 
 func (h *Background) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r *http.Request) error {

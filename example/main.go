@@ -7,12 +7,13 @@ import (
 
 	"github.com/pkg/errors"
 
+	"context"
+
 	"github.com/remind101/pkg/httpx"
 	"github.com/remind101/pkg/httpx/middleware"
 	"github.com/remind101/pkg/logger"
 	"github.com/remind101/pkg/reporter"
 	"github.com/remind101/pkg/retry"
-	"golang.org/x/net/context"
 )
 
 func ok(ctx context.Context, w http.ResponseWriter, r *http.Request) error {

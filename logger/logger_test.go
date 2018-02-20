@@ -5,7 +5,7 @@ import (
 	"log"
 	"testing"
 
-	"golang.org/x/net/context"
+	"context"
 )
 
 func TestLogger(t *testing.T) {
