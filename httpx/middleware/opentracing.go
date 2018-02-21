@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -8,7 +9,6 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 	"github.com/remind101/pkg/httpx"
-	"golang.org/x/net/context"
 )
 
 type OpentracingTracer struct {
@@ -29,7 +29,6 @@ func (h *OpentracingTracer) ServeHTTPContext(ctx context.Context, w http.Respons
 		opentracing.HTTPHeaders,
 		opentracing.HTTPHeadersCarrier(r.Header))
 	if err != nil {
-		fmt.Printf("Missing or invalid wireContext: %s\nerr: %s\n", wireContext, err)
 		span = opentracing.StartSpan("server.request")
 	} else {
 		span = opentracing.StartSpan("server.request", ext.RPCServerOption(wireContext))
