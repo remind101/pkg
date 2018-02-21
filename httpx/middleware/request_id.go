@@ -3,8 +3,8 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/remind101/pkg/httpx"
 	"context"
+	"github.com/remind101/pkg/httpx"
 )
 
 // DefaultRequestIDExtractor is the default function to use to extract a request
