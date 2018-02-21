@@ -1,6 +1,7 @@
 package service_client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,8 +14,6 @@ import (
 	httpsignatures "github.com/99designs/httpsignatures-go"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/remind101/pkg/httpx"
-
-	"golang.org/x/net/context"
 )
 
 var AggressiveTransport = &http.Transport{

@@ -1,6 +1,6 @@
 package httpx
 
-import "golang.org/x/net/context"
+import "context"
 
 func WithHeader(ctx context.Context, headerKey, headerValue string) context.Context {
 	return context.WithValue(ctx, headerKey, headerValue)
