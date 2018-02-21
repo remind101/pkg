@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	dd_opentracing "github.com/DataDog/dd-trace-go/opentracing"
+	dd_ext "github.com/DataDog/dd-trace-go/tracer/ext"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 	"github.com/remind101/pkg/httpx"
@@ -35,12 +36,8 @@ func (h *OpentracingTracer) ServeHTTPContext(ctx context.Context, w http.Respons
 	}
 	span.SetTag(dd_opentracing.ResourceName, route)
 	span.SetTag(dd_opentracing.SpanType, "web")
-	span.SetTag("http.method", r.Method)
-	span.SetTag("http.url", r.RequestURI)
-
-	if rw, ok := w.(ResponseWriter); ok {
-		span.SetTag("http.status_code", rw.Status())
-	}
+	span.SetTag(dd_ext.HTTPMethod, r.Method)
+	span.SetTag(dd_ext.HTTPURL, r.RequestURI)
 
 	if rid := httpx.RequestID(ctx); rid != "" {
 		span.SetTag("request_id", rid)
@@ -49,10 +46,12 @@ func (h *OpentracingTracer) ServeHTTPContext(ctx context.Context, w http.Respons
 	defer span.Finish()
 	ctx = opentracing.ContextWithSpan(ctx, span)
 
-	reqErr := h.handler.ServeHTTPContext(ctx, w, r)
+	rw := NewResponseWriter(w)
+	reqErr := h.handler.ServeHTTPContext(ctx, rw, r)
 
+	span.SetTag(dd_ext.HTTPCode, rw.Status())
 	if reqErr != nil {
-		span.SetTag("error.msg", reqErr.Error())
+		span.SetTag(dd_ext.ErrorMsg, reqErr.Error())
 	}
 
 	return reqErr
