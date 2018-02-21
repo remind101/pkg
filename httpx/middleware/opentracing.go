@@ -35,9 +35,25 @@ func (h *OpentracingTracer) ServeHTTPContext(ctx context.Context, w http.Respons
 	}
 	span.SetTag(dd_opentracing.ResourceName, route)
 	span.SetTag(dd_opentracing.SpanType, "web")
+	span.SetTag("http.method", r.Method)
+	span.SetTag("http.url", r.RequestURI)
+
+	if rw, ok := w.(ResponseWriter); ok {
+		span.SetTag("http.status_code", rw.Status())
+	}
+
+	if rid := httpx.RequestID(ctx); rid != "" {
+		span.SetTag("request_id", rid)
+	}
 
 	defer span.Finish()
 	ctx = opentracing.ContextWithSpan(ctx, span)
 
-	return h.handler.ServeHTTPContext(ctx, w, r)
+	reqErr := h.handler.ServeHTTPContext(ctx, w, r)
+
+	if reqErr != nil {
+		span.SetTag("error.msg", reqErr.Error())
+	}
+
+	return reqErr
 }
