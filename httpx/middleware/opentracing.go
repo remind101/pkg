@@ -48,11 +48,10 @@ func (h *OpentracingTracer) ServeHTTPContext(ctx context.Context, w http.Respons
 
 	rw := NewResponseWriter(w)
 	reqErr := h.handler.ServeHTTPContext(ctx, rw, r)
-
-	span.SetTag(dd_ext.HTTPCode, rw.Status())
 	if reqErr != nil {
-		span.SetTag(dd_ext.ErrorMsg, reqErr.Error())
+		span.SetTag(dd_opentracing.Error, reqErr)
 	}
+	span.SetTag(dd_ext.HTTPCode, rw.Status())
 
 	return reqErr
 }
