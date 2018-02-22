@@ -68,7 +68,7 @@ func TestOpentracing(t *testing.T) {
 			routes: func(r *httpx.Router) {
 			},
 			req:                  newRequest("GET", "/non_existent"),
-			expectedResourceName: "GET /non_existent",
+			expectedResourceName: "GET unknown",
 		},
 	}
 
