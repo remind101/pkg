@@ -22,7 +22,7 @@ func OpentracingTracing(h httpx.Handler, router *httpx.Router) *OpentracingTrace
 }
 
 func (h *OpentracingTracer) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	path := templatePath(h.router, r)
+	path := otTemplatePath(h.router, r)
 	route := fmt.Sprintf("%s %s", r.Method, path)
 
 	var span opentracing.Span
@@ -54,4 +54,19 @@ func (h *OpentracingTracer) ServeHTTPContext(ctx context.Context, w http.Respons
 	span.SetTag(dd_ext.HTTPCode, rw.Status())
 
 	return reqErr
+}
+
+func otTemplatePath(router *httpx.Router, r *http.Request) string {
+	var tpl string
+
+	route, _, _ := router.Handler(r)
+	if route != nil {
+		tpl = route.GetPathTemplate()
+	}
+
+	if tpl == "" {
+		tpl = "unknown"
+	}
+
+	return tpl
 }
