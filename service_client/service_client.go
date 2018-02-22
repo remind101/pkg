@@ -77,6 +77,46 @@ func NewServiceClientWithOpts(serviceURL string, opts ServiceClientOpts) *servic
 	}
 }
 
+// DoRequest performs the request and optionally will decode a json response into the targetObject.
+// TODO use request.Context() instead of passing in a context.
+func (c *serviceClient) DoRequest(ctx context.Context, req *http.Request, targetObject interface{}) error {
+	req = req.WithContext(ctx)
+
+	// Sign the request.
+	if c.key != "" {
+		c.setHttpSignature(req)
+	}
+
+	// Add forwarded headers.
+	for _, header := range c.forwardedHeaders {
+		req.Header.Add(header, httpx.Header(req.Context(), header))
+	}
+
+	// Add span to trace
+	traceCloser := c.trace(req.Context(), req)
+
+	resp, err := c.client.Do(req.Context(), req)
+	traceCloser()
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+
+	if err != nil {
+		return err
+	}
+	if err = c.checkResponse(resp); err != nil {
+		return err
+	}
+	if targetObject == nil {
+		// It is important to always read the response body. Otherwise the TCP
+		// connection cannot be re-used for keep-alives.
+		_, err := io.Copy(ioutil.Discard, resp.Body)
+		return err
+	}
+
+	return json.NewDecoder(resp.Body).Decode(targetObject)
+}
+
 func (c *serviceClient) Do(ctx context.Context, method, path string, jsonData interface{}, targetObject interface{}) error {
 	return c.do(ctx, method, path, "", jsonData, targetObject)
 }
@@ -98,33 +138,8 @@ func (c *serviceClient) do(ctx context.Context, method, path, token string, json
 	} else {
 		c.setBearerAuth(req, token)
 	}
-	if c.key != "" {
-		c.setHttpSignature(req)
-	}
 
-	for _, header := range c.forwardedHeaders {
-		req.Header.Add(header, httpx.Header(ctx, header))
-	}
-	traceCloser := c.trace(ctx, req)
-
-	resp, err := c.client.Do(ctx, req)
-	traceCloser()
-	if resp != nil {
-		defer resp.Body.Close()
-	}
-
-	if err != nil {
-		return err
-	}
-	if err = c.checkResponse(resp); err != nil {
-		return err
-	}
-	if targetObject == nil {
-		_, err := io.Copy(ioutil.Discard, resp.Body)
-		return err
-	}
-
-	return json.NewDecoder(resp.Body).Decode(targetObject)
+	return c.DoRequest(ctx, req, targetObject)
 }
 
 func (c *serviceClient) setBasicAuth(req *http.Request) {
