@@ -29,6 +29,7 @@ var AggressiveTransport = &http.Transport{
 }
 
 type ServiceClient interface {
+	DoRequest(ctx context.Context, req *http.Request, targetObject interface{}) error
 	Do(ctx context.Context, method, path string, jsonData interface{}, targetObject interface{}) error
 	DoWithBearerAuth(ctx context.Context, method, path, access_token string, jsonData, targetObject interface{}) error
 }
