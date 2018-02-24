@@ -8,6 +8,7 @@ import (
 
 	dd_opentracing "github.com/DataDog/dd-trace-go/opentracing"
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/remind101/pkg/httpx"
 )
 
 type Handlers struct {
@@ -122,6 +123,19 @@ func BasicAuther(username, password string) Handler {
 		Name: "BasicAuther",
 		Fn: func(r *Request) {
 			r.HTTPRequest.SetBasicAuth(username, password)
+		},
+	}
+}
+
+// HeadersFromContext adds headers with values from the request context.
+// This is useful for forwarding headers to upstream services.
+func HeadersFromContext(headers ...string) Handler {
+	return Handler{
+		Name: "HeadersFromContext",
+		Fn: func(r *Request) {
+			for _, header := range headers {
+				r.HTTPRequest.Header.Add(header, httpx.Header(r.HTTPRequest.Context(), header))
+			}
 		},
 	}
 }
