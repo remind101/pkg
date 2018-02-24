@@ -1,4 +1,4 @@
-package client
+package request
 
 import (
 	"net/http"
@@ -19,7 +19,7 @@ type Request struct {
 	built bool
 }
 
-func NewRequest(httpReq *http.Request, handlers Handlers, params interface{}, data interface{}) *Request {
+func New(httpReq *http.Request, handlers Handlers, params interface{}, data interface{}) *Request {
 	r := &Request{
 		HTTPClient:  http.DefaultClient,
 		Handlers:    handlers.Copy(),

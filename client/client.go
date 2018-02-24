@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/remind101/pkg/client/request"
 )
 
 // Client  - Holds request handlers, and a client and builds requests using them.
@@ -12,7 +14,7 @@ import (
 type Client struct {
 	Endpoint   string
 	HTTPClient *http.Client
-	Handlers   Handlers
+	Handlers   request.Handlers
 }
 
 // Timeout specifies a time limit for requests made by this Client.
@@ -32,7 +34,7 @@ func RoundTripper(r http.RoundTripper) func(*Client) {
 // BasicAuth adds basic auth to every request made by this client.
 func BasicAuth(username, password string) func(*Client) {
 	return func(c *Client) {
-		c.Handlers.Build.Append(BasicAuther(username, password))
+		c.Handlers.Build.Append(request.BasicAuther(username, password))
 	}
 }
 
@@ -40,7 +42,7 @@ func BasicAuth(username, password string) func(*Client) {
 func New(endpoint string, options ...func(*Client)) *Client {
 	c := &Client{
 		Endpoint: endpoint,
-		Handlers: DefaultHandlers(),
+		Handlers: request.DefaultHandlers(),
 		HTTPClient: &http.Client{
 			Timeout: 60 * time.Second,
 			Transport: &http.Transport{
@@ -65,11 +67,11 @@ func New(endpoint string, options ...func(*Client)) *Client {
 	return c
 }
 
-func (c *Client) NewRequest(method, path string, params interface{}, data interface{}) *Request {
+func (c *Client) NewRequest(method, path string, params interface{}, data interface{}) *request.Request {
 	httpReq, _ := http.NewRequest(method, path, nil)
 	httpReq.URL, _ = url.Parse(c.Endpoint + path)
 
-	r := NewRequest(httpReq, c.Handlers.Copy(), params, data)
+	r := request.New(httpReq, c.Handlers.Copy(), params, data)
 	r.HTTPClient = c.HTTPClient
 	return r
 }

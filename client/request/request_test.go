@@ -1,4 +1,4 @@
-package client_test
+package request_test
 
 import (
 	"encoding/json"
@@ -7,13 +7,13 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/remind101/pkg/client"
+	"github.com/remind101/pkg/client/request"
 )
 
 type requestTest struct {
-	Request     *client.Request
+	Request     *request.Request
 	HTTPHandler http.Handler
-	Test        func(*client.Request)
+	Test        func(*request.Request)
 }
 
 type JSONparams struct {
@@ -24,9 +24,9 @@ type JSONdata struct {
 	Value string `json:"value"`
 }
 
-func newTestRequest(method string, path string, params interface{}, data interface{}) *client.Request {
+func newTestRequest(method string, path string, params interface{}, data interface{}) *request.Request {
 	httpReq, _ := http.NewRequest(method, path, nil)
-	return client.NewRequest(httpReq, client.DefaultHandlers(), params, &data)
+	return request.New(httpReq, request.DefaultHandlers(), params, &data)
 }
 
 func TestRequestDefaults(t *testing.T) {
@@ -67,7 +67,7 @@ func TestRequestDefaults(t *testing.T) {
 // Test Basic Auth
 func TestBasicAuther(t *testing.T) {
 	r := newTestRequest("GET", "/foo", nil, nil)
-	r.Handlers.Build.Append(client.BasicAuther("user", "pass"))
+	r.Handlers.Build.Append(request.BasicAuther("user", "pass"))
 
 	sendRequest(r, http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		user, pass, ok := r.BasicAuth()
@@ -90,14 +90,14 @@ func TestBasicAuther(t *testing.T) {
 // Test metrics?
 // Test Bearer Auth
 
-func sendRequest(r *client.Request, h http.Handler) {
+func sendRequest(r *request.Request, h http.Handler) {
 	s := httptest.NewServer(h)
 	defer s.Close()
 	replaceURL(r, s.URL)
 	r.Send()
 }
 
-func replaceURL(r *client.Request, rawURL string) {
+func replaceURL(r *request.Request, rawURL string) {
 	u, _ := url.Parse(rawURL)
 	r.HTTPRequest.URL.Host = u.Host
 	r.HTTPRequest.URL.Scheme = u.Scheme
