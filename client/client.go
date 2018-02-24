@@ -60,5 +60,7 @@ func (c *Client) NewRequest(method, path string, params interface{}, data interf
 	httpReq, _ := http.NewRequest(method, path, nil)
 	httpReq.URL, _ = url.Parse(c.Endpoint + path)
 
-	return NewRequest(httpReq, c.Handlers.Copy(), params, data)
+	r := NewRequest(httpReq, c.Handlers.Copy(), params, data)
+	r.HTTPClient = c.HTTPClient
+	return r
 }
