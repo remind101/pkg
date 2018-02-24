@@ -29,9 +29,18 @@ func RoundTripper(r http.RoundTripper) func(*Client) {
 	}
 }
 
+// BasicAuth adds basic auth to every request made by this client.
+func BasicAuth(username, password string) func(*Client) {
+	return func(c *Client) {
+		c.Handlers.Build.Append(BasicAuther(username, password))
+	}
+}
+
 // New returns a new client.
-func New(options ...func(*Client)) *Client {
+func New(endpoint string, options ...func(*Client)) *Client {
 	c := &Client{
+		Endpoint: endpoint,
+		Handlers: DefaultHandlers(),
 		HTTPClient: &http.Client{
 			Timeout: 60 * time.Second,
 			Transport: &http.Transport{

@@ -116,11 +116,21 @@ var JSONDecoder = Handler{
 	},
 }
 
+// BasicAuther sets basic auth on a request.
+func BasicAuther(username, password string) Handler {
+	return Handler{
+		Name: "BasicAuther",
+		Fn: func(r *Request) {
+			r.HTTPRequest.SetBasicAuth(username, password)
+		},
+	}
+}
+
 // WithTracing returns a Send Handler that wraps another Send Handler in a trace
 // span.
 func WithTracing(h Handler, r *Request) Handler {
 	return Handler{
-		Name: "TracedHandler",
+		Name: "TracedSender",
 		Fn: func(r *Request) {
 			span, ctx := opentracing.StartSpanFromContext(r.HTTPRequest.Context(), "client.request")
 			defer span.Finish()

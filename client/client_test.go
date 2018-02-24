@@ -1,24 +1,59 @@
 package client_test
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+
+	"github.com/gorilla/mux"
+	"github.com/remind101/pkg/client"
 )
 
-func TestClient(t *testing.T) {
-	// Test Basic Configuration
-	// client := client.New()
-
-	// Test Adding Headers
-	// Test Forwarding Headers
-	// Test Parsing a JSON Response
-	// Test Tracing
-	// Test Parsing the status code
-	// Test metrics?
-	// Test Basic Auth
-	// Test Bearer Auth
+type mathClient struct {
+	c *client.Client
 }
 
-// Make it easy to construct a well behaved client
-// Make it easy to construct requests from a template
-// Make it easy to read and parse responses
-// Get tracing/instrumentation/logging/error handling/retry by default.
+type muliplyInput struct {
+	A int `json:"a"`
+	B int `json:"b"`
+}
+
+type muliplyOutput struct {
+	Result int `json:"result"`
+}
+
+func (mc *mathClient) Multiply(a, b int) (int, error) {
+	params := muliplyInput{A: a, B: b}
+	var data muliplyOutput
+
+	req := mc.c.NewRequest("POST", "/multiply", params, &data)
+	err := req.Send()
+
+	return data.Result, err
+}
+
+func TestClient(t *testing.T) {
+	r := mux.NewRouter()
+	r.Handle("/multiply", http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		var params muliplyInput
+		err := json.NewDecoder(r.Body).Decode(&params)
+		if err != nil {
+			t.Error(err)
+		}
+		response := muliplyOutput{Result: params.A * params.B}
+		json.NewEncoder(rw).Encode(response)
+	})).Methods("POST")
+	s := httptest.NewServer(r)
+	defer s.Close()
+
+	mc := mathClient{client.New(s.URL)}
+	res, err := mc.Multiply(5, 2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if got, want := res, 10; got != want {
+		t.Errorf("got %d; expected %d", got, want)
+	}
+}
