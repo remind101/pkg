@@ -3,8 +3,10 @@ package request
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http/httputil"
 
 	httpsignatures "github.com/99designs/httpsignatures-go"
 	dd_opentracing "github.com/DataDog/dd-trace-go/opentracing"
@@ -24,7 +26,7 @@ func DefaultHandlers() Handlers {
 	return Handlers{
 		Build:    NewHandlerList(JSONBuilder),
 		Sign:     NewHandlerList(),
-		Send:     NewHandlerList(BaseSender),
+		Send:     NewHandlerList(WithTracing(BaseSender)),
 		Decode:   NewHandlerList(JSONDecoder),
 		Complete: NewHandlerList(),
 	}
@@ -58,6 +60,10 @@ func (hl *HandlerList) Run(r *Request) {
 
 func (hl *HandlerList) Append(h Handler) {
 	hl.list = append(hl.list, h)
+}
+
+func (hl *HandlerList) Prepend(h Handler) {
+	hl.list = append([]Handler{h}, hl.list...)
 }
 
 func (hl *HandlerList) copy() HandlerList {
@@ -151,9 +157,35 @@ func HeadersFromContext(headers ...string) Handler {
 	}
 }
 
+// RequestLogger dumps the entire request to stdout.
+var RequestLogger = Handler{
+	Name: "RequestLogger",
+	Fn: func(r *Request) {
+		b, err := httputil.DumpRequestOut(r.HTTPRequest, true)
+		if err != nil {
+			fmt.Printf("error dumping request: %s\n", err.Error())
+			return
+		}
+		fmt.Println(string(b))
+	},
+}
+
+// ResponseLogger dumps the entire response to stdout.
+var ResponseLogger = Handler{
+	Name: "ResponseLogger",
+	Fn: func(r *Request) {
+		b, err := httputil.DumpResponse(r.HTTPResponse, true)
+		if err != nil {
+			fmt.Printf("error dumping response: %s\n", err.Error())
+			return
+		}
+		fmt.Println(string(b))
+	},
+}
+
 // WithTracing returns a Send Handler that wraps another Send Handler in a trace
 // span.
-func WithTracing(h Handler, r *Request) Handler {
+func WithTracing(h Handler) Handler {
 	return Handler{
 		Name: "TracedSender",
 		Fn: func(r *Request) {

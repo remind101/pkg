@@ -46,6 +46,12 @@ func RequestSigning(id, key string) func(*Client) {
 	}
 }
 
+// DebugLogging adds logging of the enitre request and response.
+func DebugLogging(c *Client) {
+	c.Handlers.Send.Prepend(request.RequestLogger)
+	c.Handlers.Send.Append(request.ResponseLogger)
+}
+
 // New returns a new client.
 func New(endpoint string, options ...func(*Client)) *Client {
 	c := &Client{

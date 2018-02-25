@@ -133,11 +133,20 @@ func TestRequestSinging(t *testing.T) {
 	}))
 }
 
+func TestDebugLogging(t *testing.T) {
+	r := newTestRequest("GET", "/", nil, nil)
+	r.Handlers.Send.Prepend(request.RequestLogger)
+	r.Handlers.Send.Append(request.ResponseLogger)
+	sendRequest(r, http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+	}))
+}
+
 // Test Parsing the status code
 // Test Logging
 // Test Metrics
-// Test Failure Modes
+// Test Failure Modes (failure to encode input, failure to send, failed response, failure to decode)
 // Test Context insertion
+// Test Retry
 
 func sendRequest(r *request.Request, h http.Handler) {
 	s := httptest.NewServer(h)
