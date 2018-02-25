@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"net/url"
@@ -74,8 +75,9 @@ func New(endpoint string, options ...func(*Client)) *Client {
 	return c
 }
 
-func (c *Client) NewRequest(method, path string, params interface{}, data interface{}) *request.Request {
+func (c *Client) NewRequest(ctx context.Context, method, path string, params interface{}, data interface{}) *request.Request {
 	httpReq, _ := http.NewRequest(method, path, nil)
+	httpReq = httpReq.WithContext(ctx)
 	httpReq.URL, _ = url.Parse(c.Endpoint + path)
 
 	r := request.New(httpReq, c.Handlers.Copy(), params, data)

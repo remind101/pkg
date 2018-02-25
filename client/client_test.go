@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -27,7 +28,7 @@ func (mc *mathClient) Multiply(a, b int) (int, error) {
 	params := muliplyInput{A: a, B: b}
 	var data muliplyOutput
 
-	req := mc.c.NewRequest("POST", "/multiply", params, &data)
+	req := mc.c.NewRequest(context.Background(), "POST", "/multiply", params, &data)
 	err := req.Send()
 
 	return data.Result, err
