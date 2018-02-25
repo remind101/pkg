@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"testing"
 
+	httpsignatures "github.com/99designs/httpsignatures-go"
 	"github.com/remind101/pkg/client/request"
 	"github.com/remind101/pkg/httpx"
 )
@@ -117,8 +118,26 @@ func TestForwardingHeaders(t *testing.T) {
 	}))
 }
 
+// Test Request Signing
+func TestRequestSinging(t *testing.T) {
+	r := newTestRequest("GET", "/", nil, nil)
+	r.Handlers.Sign.Append(request.RequestSigner("id", "key"))
+	sendRequest(r, http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		sig, err := httpsignatures.FromRequest(r)
+		if err != nil {
+			t.Error(err)
+		}
+		if !sig.IsValid("key", r) {
+			t.Error("Expected signature to be valid")
+		}
+	}))
+}
+
 // Test Parsing the status code
-// Test metrics?
+// Test Logging
+// Test Metrics
+// Test Failure Modes
+// Test Context insertion
 
 func sendRequest(r *request.Request, h http.Handler) {
 	s := httptest.NewServer(h)
