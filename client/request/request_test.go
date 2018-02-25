@@ -117,10 +117,8 @@ func TestForwardingHeaders(t *testing.T) {
 	}))
 }
 
-// Test Tracing
 // Test Parsing the status code
 // Test metrics?
-// Test Bearer Auth
 
 func sendRequest(r *request.Request, h http.Handler) {
 	s := httptest.NewServer(h)

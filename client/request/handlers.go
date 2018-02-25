@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 
+	httpsignatures "github.com/99designs/httpsignatures-go"
 	dd_opentracing "github.com/DataDog/dd-trace-go/opentracing"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/remind101/pkg/httpx"
@@ -117,6 +118,16 @@ var JSONDecoder = Handler{
 	},
 }
 
+// RequestSigner signs requests.
+func RequestSigner(id, key string) Handler {
+	return Handler{
+		Name: "RequestSigner",
+		Fn: func(r *Request) {
+			r.Error = httpsignatures.DefaultSha256Signer.SignRequest(id, key, r.HTTPRequest)
+		},
+	}
+}
+
 // BasicAuther sets basic auth on a request.
 func BasicAuther(username, password string) Handler {
 	return Handler{
@@ -150,7 +161,14 @@ func WithTracing(h Handler, r *Request) Handler {
 			defer span.Finish()
 			r.HTTPRequest = r.HTTPRequest.WithContext(ctx)
 
+			span.SetTag("http.method", r.HTTPRequest.Method)
+			span.SetTag("http.url", r.HTTPRequest.URL.String()) // TODO scrub URL
+
 			h.Fn(r)
+
+			if r.HTTPResponse != nil {
+				span.SetTag("http.status_code", r.HTTPResponse.StatusCode)
+			}
 
 			if r.Error != nil {
 				span.SetTag(dd_opentracing.Error, r.Error)

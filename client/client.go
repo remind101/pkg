@@ -38,6 +38,13 @@ func BasicAuth(username, password string) func(*Client) {
 	}
 }
 
+// RequestSigning adds a handler to sign requests.
+func RequestSigning(id, key string) func(*Client) {
+	return func(c *Client) {
+		c.Handlers.Sign.Append(request.RequestSigner(id, key))
+	}
+}
+
 // New returns a new client.
 func New(endpoint string, options ...func(*Client)) *Client {
 	c := &Client{
