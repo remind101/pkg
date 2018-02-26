@@ -200,7 +200,7 @@ func WithTracing(h Handler) Handler {
 			r.HTTPRequest = r.HTTPRequest.WithContext(ctx)
 
 			span.SetTag("http.method", r.HTTPRequest.Method)
-			span.SetTag("http.url", r.HTTPRequest.URL.String()) // TODO scrub URL
+			span.SetTag("http.url", r.HTTPRequest.URL.Hostname()+r.HTTPRequest.URL.EscapedPath())
 
 			h.Fn(r)
 
