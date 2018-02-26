@@ -15,30 +15,36 @@ import (
 )
 
 type Handlers struct {
-	Build    HandlerList
-	Sign     HandlerList
-	Send     HandlerList
-	Decode   HandlerList
-	Complete HandlerList
+	Build            HandlerList
+	Sign             HandlerList
+	Send             HandlerList
+	ValidateResponse HandlerList
+	Decode           HandlerList
+	DecodeError      HandlerList
+	Complete         HandlerList
 }
 
 func DefaultHandlers() Handlers {
 	return Handlers{
-		Build:    NewHandlerList(JSONBuilder),
-		Sign:     NewHandlerList(),
-		Send:     NewHandlerList(WithTracing(BaseSender)),
-		Decode:   NewHandlerList(JSONDecoder),
-		Complete: NewHandlerList(),
+		Build:            NewHandlerList(JSONBuilder),
+		Sign:             NewHandlerList(),
+		Send:             NewHandlerList(WithTracing(BaseSender)),
+		ValidateResponse: NewHandlerList(),
+		Decode:           NewHandlerList(JSONDecoder),
+		DecodeError:      NewHandlerList(),
+		Complete:         NewHandlerList(),
 	}
 }
 
 func (h Handlers) Copy() Handlers {
 	return Handlers{
-		Build:    h.Build.copy(),
-		Sign:     h.Sign.copy(),
-		Send:     h.Send.copy(),
-		Decode:   h.Decode.copy(),
-		Complete: h.Complete.copy(),
+		Build:            h.Build.copy(),
+		Sign:             h.Sign.copy(),
+		Send:             h.Send.copy(),
+		ValidateResponse: h.ValidateResponse.copy(),
+		Decode:           h.Decode.copy(),
+		DecodeError:      h.DecodeError.copy(),
+		Complete:         h.Complete.copy(),
 	}
 }
 

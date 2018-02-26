@@ -38,36 +38,33 @@ func (r *Request) Send() error {
 	}()
 
 	r.Build()
-	r.Sign()
-	r.Do()
-	r.Decode()
+	if r.Error != nil {
+		return r.Error
+	}
 
+	r.Handlers.Send.Run(r)
+	if r.Error != nil {
+		return r.Error
+	}
+
+	r.Handlers.ValidateResponse.Run(r)
+	if r.Error != nil {
+		r.Handlers.DecodeError.Run(r)
+		return r.Error
+	}
+
+	r.Handlers.Decode.Run(r)
 	return r.Error
 }
 
+// Build runs build handlers and then runs sign handlers.
 func (r *Request) Build() {
 	if !r.built {
 		r.Handlers.Build.Run(r)
 		r.built = true
+		if r.Error != nil {
+			return
+		}
+		r.Handlers.Sign.Run(r)
 	}
-}
-
-func (r *Request) Sign() {
-	r.Build()
-	if r.Error != nil {
-		return
-	}
-	r.Handlers.Sign.Run(r)
-}
-
-// Do will perform the request unless an error has already occurred
-func (r *Request) Do() {
-	if r.Error != nil {
-		return
-	}
-	r.Handlers.Send.Run(r)
-}
-
-func (r *Request) Decode() {
-	r.Handlers.Decode.Run(r)
 }

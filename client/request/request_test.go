@@ -141,10 +141,10 @@ func TestDebugLogging(t *testing.T) {
 	}))
 }
 
-// Test Parsing the status code
+// Test Parsing the status code (create custom error type)
 // Test Logging
 // Test Metrics
-// Test Failure Modes (failure to encode input, failure to send, failed response, failure to decode)
+// Test Failure Modes (failure to encode input, failure to send, failed response, failure to decode, multiple failures?)
 // Test Context insertion
 // Test Retry
 
