@@ -196,6 +196,11 @@ func WithTracing(h Handler) Handler {
 		Name: "TracedSender",
 		Fn: func(r *Request) {
 			span, ctx := opentracing.StartSpanFromContext(r.HTTPRequest.Context(), "client.request")
+			opentracing.GlobalTracer().Inject(
+				span.Context(),
+				opentracing.HTTPHeaders,
+				opentracing.HTTPHeadersCarrier(r.HTTPRequest.Header),
+			)
 			defer span.Finish()
 			r.HTTPRequest = r.HTTPRequest.WithContext(ctx)
 
