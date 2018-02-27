@@ -141,6 +141,7 @@ func TestDebugLogging(t *testing.T) {
 	}))
 }
 
+// TODO
 // Test Parsing the status code (create custom error type)
 // Test Logging
 // Test Metrics

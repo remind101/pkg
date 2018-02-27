@@ -19,6 +19,8 @@ import (
 	"github.com/remind101/pkg/httpx"
 )
 
+// Handlers represents lists of request handlers for each phase in the request
+// lifecycle.
 type Handlers struct {
 	Build            HandlerList
 	Sign             HandlerList
@@ -29,6 +31,8 @@ type Handlers struct {
 	Complete         HandlerList
 }
 
+// DefaultHandlers defines a basic request configuration that assumes JSON
+// requests and responses.
 func DefaultHandlers() Handlers {
 	return Handlers{
 		Build:            NewHandlerList(JSONBuilder),
@@ -41,6 +45,7 @@ func DefaultHandlers() Handlers {
 	}
 }
 
+// Copy returns a copy of a Handlers instance.
 func (h Handlers) Copy() Handlers {
 	return Handlers{
 		Build:            h.Build.copy(),
@@ -53,28 +58,38 @@ func (h Handlers) Copy() Handlers {
 	}
 }
 
+// HandlerList manages a list of request handlers.
 type HandlerList struct {
 	list []Handler
 }
 
+// NewHandlerList constructs a new HandlerList with the given handlers.
 func NewHandlerList(hh ...Handler) HandlerList {
 	return HandlerList{
 		list: append([]Handler{}, hh...),
 	}
 }
 
+// Run calls each request handler in order.
 func (hl *HandlerList) Run(r *Request) {
 	for _, h := range hl.list {
 		h.Fn(r)
 	}
 }
 
+// Append adds a handler to the end of the list.
 func (hl *HandlerList) Append(h Handler) {
 	hl.list = append(hl.list, h)
 }
 
+// Prepend adds a handler to the front of the list.
 func (hl *HandlerList) Prepend(h Handler) {
 	hl.list = append([]Handler{h}, hl.list...)
+}
+
+// Clear truncates a handler list.
+func (hl *HandlerList) Clear() {
+	hl.list = []Handler{}
 }
 
 func (hl *HandlerList) copy() HandlerList {
@@ -87,6 +102,7 @@ func (hl *HandlerList) copy() HandlerList {
 	return n
 }
 
+// Handler defines a request handler.
 type Handler struct {
 	Name string
 	Fn   func(*Request)
@@ -142,6 +158,8 @@ func handleSendError(r *Request, err error) {
 	r.Error = errors.Wrap(err, "send request failed")
 }
 
+// JSONBuilder adds standard JSON headers to the request and encodes Params
+// as JSON to the request body if the request is not a GET.
 var JSONBuilder = Handler{
 	Name: "JSONBuilder",
 	Fn: func(r *Request) {

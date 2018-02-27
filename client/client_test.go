@@ -15,18 +15,18 @@ type mathClient struct {
 	c *client.Client
 }
 
-type muliplyInput struct {
+type multiplyInput struct {
 	A int `json:"a"`
 	B int `json:"b"`
 }
 
-type muliplyOutput struct {
+type multiplyOutput struct {
 	Result int `json:"result"`
 }
 
 func (mc *mathClient) Multiply(a, b int) (int, error) {
-	params := muliplyInput{A: a, B: b}
-	var data muliplyOutput
+	params := multiplyInput{A: a, B: b}
+	var data multiplyOutput
 
 	req := mc.c.NewRequest(context.Background(), "POST", "/multiply", params, &data)
 	err := req.Send()
@@ -37,12 +37,12 @@ func (mc *mathClient) Multiply(a, b int) (int, error) {
 func TestClient(t *testing.T) {
 	r := mux.NewRouter()
 	r.Handle("/multiply", http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		var params muliplyInput
+		var params multiplyInput
 		err := json.NewDecoder(r.Body).Decode(&params)
 		if err != nil {
 			t.Error(err)
 		}
-		response := muliplyOutput{Result: params.A * params.B}
+		response := multiplyOutput{Result: params.A * params.B}
 		json.NewEncoder(rw).Encode(response)
 	})).Methods("POST")
 	s := httptest.NewServer(r)
