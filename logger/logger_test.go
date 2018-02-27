@@ -49,6 +49,17 @@ func TestLogLevel(t *testing.T) {
 	}
 }
 
+func TestWith(t *testing.T) {
+	b := new(bytes.Buffer)
+	l := New(log.New(b, "", 0), INFO)
+	lw := l.With("request_id", "abc")
+	lw.Info("message", "count", 1)
+
+	if got, want := b.String(), "message request_id=abc count=1\n"; got != want {
+		t.Fatalf("With Logger => %q; want %q", got, want)
+	}
+}
+
 func TestWithContextLogger(t *testing.T) {
 	b := new(bytes.Buffer)
 	l := New(log.New(b, "", 0), INFO)
