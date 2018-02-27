@@ -6,11 +6,16 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"net/http/httputil"
+	"net/url"
+	"regexp"
+	"strconv"
 
 	httpsignatures "github.com/99designs/httpsignatures-go"
 	dd_opentracing "github.com/DataDog/dd-trace-go/opentracing"
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
 	"github.com/remind101/pkg/httpx"
 )
 
@@ -91,8 +96,50 @@ type Handler struct {
 var BaseSender = Handler{
 	Name: "BaseSender",
 	Fn: func(r *Request) {
-		r.HTTPResponse, r.Error = r.HTTPClient.Do(r.HTTPRequest)
+		var err error
+		r.HTTPResponse, err = r.HTTPClient.Do(r.HTTPRequest)
+		if err != nil {
+			handleSendError(r, err)
+		}
 	},
+}
+
+var reStatusCode = regexp.MustCompile(`^(\d{3})`)
+
+func handleSendError(r *Request, err error) {
+	// Prevent leaking if an HTTPResponse was returned.
+	if r.HTTPResponse != nil {
+		r.HTTPResponse.Body.Close()
+	}
+
+	// Capture the case where url.Error is returned for error processing
+	// response. e.g. 301 without location header comes back as string
+	// error and r.HTTPResponse is nil. Other URL redirect errors will
+	// comeback in a similar method.
+	if e, ok := err.(*url.Error); ok && e.Err != nil {
+		if s := reStatusCode.FindStringSubmatch(e.Err.Error()); s != nil {
+			code, _ := strconv.ParseInt(s[1], 10, 64)
+			r.HTTPResponse = &http.Response{
+				StatusCode: int(code),
+				Status:     http.StatusText(int(code)),
+				Body:       ioutil.NopCloser(bytes.NewReader([]byte{})),
+			}
+			return
+		}
+	}
+
+	if r.HTTPResponse == nil {
+		// Add a dummy request response object to ensure the HTTPResponse
+		// value is consistent.
+		r.HTTPResponse = &http.Response{
+			StatusCode: int(0),
+			Status:     http.StatusText(int(0)),
+			Body:       ioutil.NopCloser(bytes.NewReader([]byte{})),
+		}
+	}
+
+	// Catch all other request errors.
+	r.Error = errors.Wrap(err, "send request failed")
 }
 
 var JSONBuilder = Handler{
