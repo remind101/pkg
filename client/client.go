@@ -13,10 +13,10 @@
 //	}
 //
 //	func(c MyClient) Thing(input *ThingInput) (*ThingOutput, err) {
-//    var output ThingOutput
+//		var output ThingOutput
 //		req := c.Client.NewRequest("GET", "/thing", input, output)
-//    err := req.Send()
-//    return output, err
+//		err := req.Send()
+//		return output, err
 //	}
 package client
 
