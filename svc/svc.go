@@ -1,5 +1,22 @@
 // Package svc provides some tooling to make building services with remind101/pkg
 // easier.
+//
+// Recommend Usage:
+//
+//	func main() {
+//		env := svc.InitAll()
+//		defer env.Close()
+//
+//		r := httpx.NewRouter()
+//		// ... add routes
+//
+//		h := svc.NewStandardHandler(svc.HandlerOpts{
+//			Router:   r,
+//			Reporter: env.Reporter,
+//		})
+//
+// 	svc.RunServer(h, "80", 5*time.Second)
+// }
 package svc
 
 import (
