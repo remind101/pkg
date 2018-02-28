@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"net/http"
 
+	"context"
+
 	"github.com/remind101/pkg/httpx"
 	"github.com/remind101/pkg/reporter"
-	"context"
 )
 
 // Recovery is a middleware that will recover from panics and return the error.
@@ -47,6 +48,28 @@ func (h *Recovery) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, 
 			}
 
 			reporter.Report(ctx, err)
+			return
+		}
+	}()
+
+	err = h.handler.ServeHTTPContext(ctx, w, r)
+
+	return
+}
+
+type SimpleRecovery struct {
+	handler httpx.Handler
+}
+
+// ServeHTTPContext implements the httpx.Handler interface. It recovers from
+// panics and returns an error for upstream middleware to handle.
+func (h *SimpleRecovery) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r *http.Request) (err error) {
+	defer func() {
+		if v := recover(); v != nil {
+			var ok bool
+			if err, ok = v.(error); !ok {
+				err = fmt.Errorf("%v", v)
+			}
 			return
 		}
 	}()
