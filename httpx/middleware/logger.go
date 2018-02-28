@@ -8,12 +8,17 @@ import (
 	"os"
 	"time"
 
+	"context"
+
 	"github.com/remind101/pkg/httpx"
 	"github.com/remind101/pkg/logger"
-	"context"
 )
 
 type loggerGenerator func(context.Context, *http.Request) logger.Logger
+
+func LoggerWithRequestID(ctx context.Context, r *http.Request) logger.Logger {
+	return logger.DefaultLogger.With("request_id", httpx.RequestID(ctx))
+}
 
 // returns a loggerGenerator that generates a loggers that write to STDOUT
 // with the level parsed from the string (eg "info")
