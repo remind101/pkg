@@ -3,8 +3,10 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/remind101/pkg/httpx"
 	"context"
+
+	"github.com/remind101/pkg/httpx"
+	"github.com/remind101/pkg/reporter"
 )
 
 type ErrorHandlerFunc func(context.Context, error, http.ResponseWriter, *http.Request)
@@ -12,6 +14,13 @@ type ErrorHandlerFunc func(context.Context, error, http.ResponseWriter, *http.Re
 // DefaultErrorHandler is an error handler that will respond with the error
 // message and a 500 status.
 var DefaultErrorHandler = func(ctx context.Context, err error, w http.ResponseWriter, r *http.Request) {
+	http.Error(w, err.Error(), http.StatusInternalServerError)
+}
+
+// ReportingErrorHandler is an error handler that will report the error and respond
+// with the error message and a 500 status.
+var ReportingErrorHandler = func(ctx context.Context, err error, w http.ResponseWriter, r *http.Request) {
+	reporter.Report(ctx, err)
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 

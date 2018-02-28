@@ -40,6 +40,7 @@ type Logger interface {
 	Debug(msg string, pairs ...interface{})
 	Info(msg string, pairs ...interface{})
 	Error(msg string, pairs ...interface{})
+	With(pairs ...interface{}) Logger
 }
 
 var DefaultLogLevel = INFO
@@ -52,13 +53,24 @@ var DefaultLogger = New(log.New(os.Stdout, "[default] ", log.LstdFlags), Default
 type logger struct {
 	Level
 	*log.Logger
+	ctxPairs []interface{} // Contextual key value pairs that will be prepended to the log message.
 }
 
 // New wraps the log.Logger to implement the Logger interface.
 func New(l *log.Logger, ll Level) Logger {
 	return &logger{
-		Logger: l,
-		Level:  ll,
+		Logger:   l,
+		Level:    ll,
+		ctxPairs: []interface{}{},
+	}
+}
+
+// With returns a new logger with the given key value pairs added to each log message.
+func (l *logger) With(pairs ...interface{}) Logger {
+	return &logger{
+		Logger:   l.Logger,
+		Level:    l.Level,
+		ctxPairs: append(l.ctxPairs, pairs...),
 	}
 }
 
@@ -76,6 +88,8 @@ func (l *logger) Info(msg string, pairs ...interface{})  { l.Log(INFO, msg, pair
 func (l *logger) Error(msg string, pairs ...interface{}) { l.Log(ERROR, msg, pairs...) }
 
 func (l *logger) message(pairs ...interface{}) string {
+	pairs = append(l.ctxPairs, pairs...)
+
 	if len(pairs) == 1 {
 		return fmt.Sprintf("%v", pairs[0])
 	}
