@@ -57,13 +57,13 @@ func (h *Recovery) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, 
 	return
 }
 
-type SimpleRecovery struct {
+type BasicRecovery struct {
 	handler httpx.Handler
 }
 
 // ServeHTTPContext implements the httpx.Handler interface. It recovers from
 // panics and returns an error for upstream middleware to handle.
-func (h *SimpleRecovery) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r *http.Request) (err error) {
+func (h *BasicRecovery) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r *http.Request) (err error) {
 	defer func() {
 		if v := recover(); v != nil {
 			var ok bool
@@ -77,4 +77,8 @@ func (h *SimpleRecovery) ServeHTTPContext(ctx context.Context, w http.ResponseWr
 	err = h.handler.ServeHTTPContext(ctx, w, r)
 
 	return
+}
+
+func BasicRecover(h httpx.Handler) *BasicRecovery {
+	return &BasicRecovery{handler: h}
 }
