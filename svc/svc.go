@@ -13,7 +13,7 @@
 //		h := svc.NewStandardHandler(svc.HandlerOpts{
 //			Router:   r,
 //			Reporter: env.Reporter,
-//		})
+//	})
 //
 // 	svc.RunServer(h, "80", 5*time.Second)
 // }
@@ -42,20 +42,37 @@ import (
 )
 
 type HandlerOpts struct {
-	Router    *httpx.Router
-	Reporter  reporter.Reporter
-	BasicAuth string
+	Router            *httpx.Router
+	Reporter          reporter.Reporter
+	ForwardingHeaders []string
+	BasicAuth         string
 }
 
-// NewStandardHandler
+// NewStandardHandler returns an http.Handler with a standard middleware stack.
+// The last middleware added is the first middleware to handle the request.
+// Order is pretty important as some middleware depends on others having run
+// already.
 func NewStandardHandler(opts HandlerOpts) http.Handler {
 	var h httpx.Handler
 
-	// Recover from panics.
-	h = middleware.Recover(opts.Router, opts.Reporter)
+	// Recover from panics. A panic is converted to an error. This should be first,
+	// even though it means panics in middleware will not be recovered, because
+	// later middleware expects endpoint panics to be returned as an error.
+	h = middleware.BasicRecover(opts.Router)
 
-	// Add request tracing
+	// Add request tracing. Must go before the HandleError middleware in order
+	// to capture any errors from the endpoint handler.
 	h = middleware.OpentracingTracing(h, opts.Router)
+
+	// Handler errors returned by endpoint handler or recovery middleware.
+	// Errors will no longer be returned after this middeware.
+	h = middleware.HandleError(h, middleware.ReportingErrorHandler)
+
+	// Insert logger into context and log requests at INFO level.
+	h = middleware.LogTo(h, middleware.LoggerWithRequestID)
+
+	// Add reporter to context and request to reporter context.
+	h = middleware.WithReporter(h, opts.Reporter)
 
 	// Add the request id to the context.
 	h = middleware.ExtractRequestID(h)
@@ -67,7 +84,16 @@ func NewStandardHandler(opts HandlerOpts) http.Handler {
 		h = middleware.BasicAuth(h, user, pass, "")
 	}
 
-	// Wrap the route in middleware to add a context.Context.
+	// Adds forwarding headers from request to the context. This allows http clients
+	// to get those headers from the context and add them to upstream requests.
+	if len(opts.ForwardingHeaders) > 0 {
+		for _, header := range opts.ForwardingHeaders {
+			h = middleware.ExtractHeader(h, header)
+		}
+	}
+
+	// Wrap the route in middleware to add a context.Context. This middleware must be
+	// last as it acts as the adaptor between http.Handler and httpx.Handler.
 	return middleware.BackgroundContext(h)
 }
 
@@ -121,8 +147,11 @@ func InitAll() Env {
 	traceCloser := InitTracer()
 	metricsCloser := InitMetrics()
 
+	l := InitLogger()
+	logger.DefaultLogger = l
+
 	return Env{
-		Logger:   InitLogger(),
+		Logger:   l,
 		Reporter: InitReporter(),
 		Close: func() {
 			traceCloser()
@@ -188,7 +217,7 @@ func InitLogger() logger.Logger {
 		lvl = logger.ParseLevel(ll)
 	}
 
-	return logger.New(log.New(os.Stdout, "", log.Lshortfile), lvl)
+	return logger.New(log.New(os.Stdout, "", 0), lvl)
 }
 
 // InitReporter configures and returns a reporter.Reporter instance.
@@ -202,7 +231,7 @@ func InitReporter() reporter.Reporter {
 
 	rep := reporter.MultiReporter{}
 
-	// Log Reporter
+	// Log Reporter, uses package level logger.
 	rep = append(rep, reporter.NewLogReporter())
 
 	// Rollbar reporter
