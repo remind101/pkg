@@ -269,8 +269,11 @@ func WithTracing(h Handler) Handler {
 			defer span.Finish()
 			r.HTTPRequest = r.HTTPRequest.WithContext(ctx)
 
+			span.SetTag(dd_opentracing.ResourceName, r.ClientInfo.ServiceName)
 			span.SetTag("http.method", r.HTTPRequest.Method)
 			span.SetTag("http.url", r.HTTPRequest.URL.Hostname()+r.HTTPRequest.URL.EscapedPath())
+			span.SetTag("out.host", r.HTTPRequest.URL.Hostname())
+			span.SetTag("out.port", r.HTTPRequest.URL.Port())
 
 			h.Fn(r)
 

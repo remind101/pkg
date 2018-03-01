@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/remind101/pkg/client/metadata"
 	"github.com/remind101/pkg/client/request"
 )
 
@@ -26,7 +27,8 @@ type JSONdata struct {
 
 func newTestRequest(method string, path string, params interface{}, data interface{}) *request.Request {
 	httpReq, _ := http.NewRequest(method, path, nil)
-	return request.New(httpReq, request.DefaultHandlers(), params, &data)
+	info := metadata.ClientInfo{ServiceName: "TestService", Endpoint: "http://localhost"}
+	return request.New(httpReq, info, request.DefaultHandlers(), params, &data)
 }
 
 func TestRequestDefaults(t *testing.T) {

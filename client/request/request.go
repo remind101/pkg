@@ -3,25 +3,29 @@ package request
 import (
 	"net/http"
 	"time"
+
+	"github.com/remind101/pkg/client/metadata"
 )
 
 // Request manages the lifecycle of a client request.
 type Request struct {
-	Time         time.Time      // The time the request was created.
-	HTTPClient   *http.Client   // The underlying http.Client that will make the request.
-	Handlers     Handlers       // Handlers contains the logic that manages the lifecycle of the request.
-	HTTPRequest  *http.Request  // The http.Request object
-	HTTPResponse *http.Response // The http.Response object, should be populated after Handlers.Send has run.
-	Params       interface{}    // The input value to encode into the request.
-	Data         interface{}    // The output value to decode the response into.
-	Error        error          // Holds any error that occurs during request sending.
+	ClientInfo   metadata.ClientInfo // Metadata about the client generating this request.
+	Time         time.Time           // The time the request was created.
+	HTTPClient   *http.Client        // The underlying http.Client that will make the request.
+	Handlers     Handlers            // Handlers contains the logic that manages the lifecycle of the request.
+	HTTPRequest  *http.Request       // The http.Request object
+	HTTPResponse *http.Response      // The http.Response object, should be populated after Handlers.Send has run.
+	Params       interface{}         // The input value to encode into the request.
+	Data         interface{}         // The output value to decode the response into.
+	Error        error               // Holds any error that occurs during request sending.
 
 	built bool // True if request has been built already.
 }
 
 // New creates a new Request.
-func New(httpReq *http.Request, handlers Handlers, params interface{}, data interface{}) *Request {
+func New(httpReq *http.Request, info metadata.ClientInfo, handlers Handlers, params interface{}, data interface{}) *Request {
 	r := &Request{
+		ClientInfo:  info,
 		HTTPClient:  http.DefaultClient,
 		Handlers:    handlers.Copy(),
 		Time:        time.Now(),
