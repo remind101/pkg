@@ -9,6 +9,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/remind101/pkg/client"
+	"github.com/remind101/pkg/client/metadata"
 )
 
 type mathClient struct {
@@ -48,7 +49,9 @@ func TestClient(t *testing.T) {
 	s := httptest.NewServer(r)
 	defer s.Close()
 
-	mc := mathClient{client.New(s.URL)}
+	mc := mathClient{
+		c: client.New(metadata.ClientInfo{ServiceName: "Math", Endpoint: s.URL}),
+	}
 	res, err := mc.Multiply(5, 2)
 	if err != nil {
 		t.Error(err)
