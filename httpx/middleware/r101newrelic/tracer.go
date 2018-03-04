@@ -1,12 +1,13 @@
-package middleware
+package r101newrelic
 
 import (
 	"fmt"
 	"net/http"
 
+	"context"
+
 	"github.com/remind101/newrelic"
 	"github.com/remind101/pkg/httpx"
-	"context"
 )
 
 type NewRelicTracer struct {

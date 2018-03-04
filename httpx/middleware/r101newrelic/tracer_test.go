@@ -1,14 +1,15 @@
-package middleware
+package r101newrelic
 
 import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"context"
+
 	"github.com/remind101/newrelic"
 	"github.com/remind101/pkg/httpx"
 	"github.com/stretchr/testify/mock"
-	"context"
 )
 
 type tracerTest struct {

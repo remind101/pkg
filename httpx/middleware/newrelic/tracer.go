@@ -1,18 +1,19 @@
-package middleware
+package newrelic
 
 import (
 	"fmt"
 	"net/http"
 
+	"context"
+
 	"github.com/newrelic/go-agent"
 	"github.com/remind101/pkg/httpx"
-	"context"
 )
 
 type NewRelicGoTracer struct {
-	handler  httpx.Handler
-	app      newrelic.Application
-	router   *httpx.Router
+	handler httpx.Handler
+	app     newrelic.Application
+	router  *httpx.Router
 }
 
 func NewRelicGoTracing(h httpx.Handler, router *httpx.Router, app newrelic.Application) httpx.Handler {
@@ -51,3 +52,18 @@ const (
 	newrelic_app = iota
 	newrelic_txn = iota
 )
+
+func templatePath(router *httpx.Router, r *http.Request) string {
+	var tpl string
+
+	route, _, _ := router.Handler(r)
+	if route != nil {
+		tpl = route.GetPathTemplate()
+	}
+
+	if tpl == "" {
+		tpl = r.URL.Path
+	}
+
+	return tpl
+}
