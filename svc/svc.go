@@ -46,6 +46,7 @@ type HandlerOpts struct {
 	Reporter          reporter.Reporter
 	ForwardingHeaders []string
 	BasicAuth         string
+	ErrorHandler      middleware.ErrorHandlerFunc
 }
 
 // NewStandardHandler returns an http.Handler with a standard middleware stack.
@@ -66,7 +67,11 @@ func NewStandardHandler(opts HandlerOpts) http.Handler {
 
 	// Handler errors returned by endpoint handler or recovery middleware.
 	// Errors will no longer be returned after this middeware.
-	h = middleware.HandleError(h, middleware.ReportingErrorHandler)
+	errorHandler := opts.ErrorHandler
+	if errorHandler == nil {
+                 errorHandler = middleware.ReportingErrorHandler
+	}
+	h = middleware.HandleError(h, errorHandler)
 
 	// Insert logger into context and log requests at INFO level.
 	h = middleware.LogTo(h, middleware.LoggerWithRequestID)
