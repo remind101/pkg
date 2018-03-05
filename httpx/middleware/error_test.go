@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -48,6 +49,11 @@ func TestErrorMiddleware(t *testing.T) {
 		{
 			Error: tmpError("service unavailable"),
 			Body:  "service unavailable\n",
+			Code:  503,
+		},
+		{
+			Error: &net.DNSError{Err: "no such host", IsTimeout: true},
+			Body:  "lookup : no such host\n",
 			Code:  503,
 		},
 		{
