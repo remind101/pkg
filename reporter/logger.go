@@ -3,9 +3,10 @@ package reporter
 import (
 	"fmt"
 
+	"context"
+
 	"github.com/pkg/errors"
 	"github.com/remind101/pkg/logger"
-	"context"
 )
 
 // LogReporter is a Handler that logs the error to a log.Logger.
