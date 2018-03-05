@@ -38,9 +38,9 @@ func DefaultHandlers() Handlers {
 		Build:            NewHandlerList(JSONBuilder),
 		Sign:             NewHandlerList(),
 		Send:             NewHandlerList(WithTracing(BaseSender)),
-		ValidateResponse: NewHandlerList(),
+		ValidateResponse: NewHandlerList(BaseResponseValidator),
 		Decode:           NewHandlerList(JSONDecoder),
-		DecodeError:      NewHandlerList(),
+		DecodeError:      NewHandlerList(JSONErrorDecoder),
 		Complete:         NewHandlerList(),
 	}
 }
@@ -177,6 +177,18 @@ var JSONBuilder = Handler{
 	},
 }
 
+// BaseResponseValidator will validate that the response was successful or not.
+// DecodeError handlers can and should replace the request error with a
+// more meaningful error by parsing the response body.
+var BaseResponseValidator = Handler{
+	Name: "BaseResponseValidator",
+	Fn: func(r *Request) {
+		if r.HTTPResponse.StatusCode == 0 || r.HTTPResponse.StatusCode >= 400 {
+			r.Error = errors.Errorf("unknown error occurred, status code: %d.", r.HTTPResponse.StatusCode)
+		}
+	},
+}
+
 // JSONDecoder decodes a response as JSON.
 var JSONDecoder = Handler{
 	Name: "JSONDecoder",
@@ -192,6 +204,32 @@ var JSONDecoder = Handler{
 			return
 		}
 		r.Error = json.NewDecoder(r.HTTPResponse.Body).Decode(r.Data)
+	},
+}
+
+type jsonErrorResponse struct {
+	Error string `json: "error"`
+}
+
+// JSONErrorDecoder decodes an error response as JSON.
+var JSONErrorDecoder = Handler{
+	Name: "JSONErrorDecoder",
+	Fn: func(r *Request) {
+		defer r.HTTPResponse.Body.Close()
+		bodyBytes, err := ioutil.ReadAll(r.HTTPResponse.Body)
+		if err != nil {
+			return
+		}
+		if len(bodyBytes) == 0 {
+			return
+		}
+		var jsonErr jsonErrorResponse
+		if err := json.Unmarshal(bodyBytes, &jsonErr); err != nil {
+			return
+		}
+
+		// Set successfully decoded error response as the request error.
+		r.Error = errors.New(jsonErr.Error)
 	},
 }
 
