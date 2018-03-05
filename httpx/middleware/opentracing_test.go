@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"context"
+
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/mocktracer"
 	"github.com/remind101/pkg/httpx"
@@ -105,4 +106,13 @@ func runOpentracingTest(t *testing.T, tt *opentracingTest) {
 	if resourceName != tt.expectedResourceName {
 		t.Errorf("Expected %s as resource name, got %s", tt.expectedResourceName, resourceName)
 	}
+}
+
+func newRequest(method, path string) *http.Request {
+	req, err := http.NewRequest(method, path, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	return req
 }
