@@ -11,17 +11,48 @@ import (
 
 type ErrorHandlerFunc func(context.Context, error, http.ResponseWriter, *http.Request)
 
+type temporaryError interface {
+	Temporary() bool // Is the error temporary?
+}
+
+type timeoutError interface {
+	Timeout() bool // Is the error a timeout?
+}
+
+type statusCoder interface {
+	StatusCode() int
+}
+
 // DefaultErrorHandler is an error handler that will respond with the error
 // message and a 500 status.
 var DefaultErrorHandler = func(ctx context.Context, err error, w http.ResponseWriter, r *http.Request) {
-	http.Error(w, err.Error(), http.StatusInternalServerError)
+	writeError(w, err)
 }
 
 // ReportingErrorHandler is an error handler that will report the error and respond
 // with the error message and a 500 status.
 var ReportingErrorHandler = func(ctx context.Context, err error, w http.ResponseWriter, r *http.Request) {
 	reporter.Report(ctx, err)
-	http.Error(w, err.Error(), http.StatusInternalServerError)
+	writeError(w, err)
+}
+
+func writeError(w http.ResponseWriter, err error) {
+	http.Error(w, err.Error(), statusCodeForError(err))
+}
+
+func statusCodeForError(err error) int {
+	if e, ok := err.(statusCoder); ok {
+		return e.StatusCode()
+	}
+	if e, ok := err.(temporaryError); ok && e.Temporary() {
+		return http.StatusServiceUnavailable
+	}
+
+	if e, ok := err.(timeoutError); ok && e.Timeout() {
+		return http.StatusServiceUnavailable
+	}
+
+	return http.StatusInternalServerError
 }
 
 // Error is an httpx.Handler that will handle errors with an ErrorHandler.

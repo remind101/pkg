@@ -2,37 +2,87 @@ package middleware
 
 import (
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/remind101/pkg/httpx"
 	"context"
+
+	"github.com/remind101/pkg/httpx"
 )
 
-func TestError(t *testing.T) {
-	h := &Error{
-		handler: httpx.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-			return errors.New("boom")
-		}),
+type tmpError string
+
+func (te tmpError) Error() string {
+	return string(te)
+}
+
+func (te tmpError) Temporary() bool {
+	return true
+}
+
+type statusCodeError struct {
+	Err        error
+	statusCode int
+}
+
+func (s statusCodeError) Error() string {
+	return s.Err.Error()
+}
+
+func (s statusCodeError) StatusCode() int {
+	return s.statusCode
+}
+
+func TestErrorMiddleware(t *testing.T) {
+	tests := []struct {
+		Error error
+		Body  string
+		Code  int
+	}{
+		{
+			Error: errors.New("boom"),
+			Body:  "boom\n",
+			Code:  500,
+		},
+		{
+			Error: tmpError("service unavailable"),
+			Body:  "service unavailable\n",
+			Code:  503,
+		},
+		{
+			Error: &net.DNSError{Err: "no such host", IsTimeout: true},
+			Body:  "lookup : no such host\n",
+			Code:  503,
+		},
+		{
+			Error: statusCodeError{Err: errors.New("invalid request"), statusCode: 400},
+			Body:  "invalid request\n",
+			Code:  400,
+		},
 	}
 
-	ctx := context.Background()
-	req, _ := http.NewRequest("GET", "/path", nil)
-	resp := httptest.NewRecorder()
+	for _, tt := range tests {
+		h := &Error{
+			handler: httpx.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+				return tt.Error
+			}),
+		}
+		req, _ := http.NewRequest("GET", "/", nil)
+		resp := httptest.NewRecorder()
+		err := h.ServeHTTPContext(context.Background(), resp, req)
+		if err != nil {
+			t.Fatal("Expected no error to be returned because it was handled")
+		}
 
-	err := h.ServeHTTPContext(ctx, resp, req)
+		if got, want := resp.Body.String(), tt.Body; got != want {
+			t.Fatalf("Body => %s; want %s", got, want)
+		}
 
-	if err != nil {
-		t.Fatal("Expected no error to be returned because it was handled")
-	}
-
-	if got, want := resp.Body.String(), "boom\n"; got != want {
-		t.Fatalf("Body => %s; want %s", got, want)
-	}
-
-	if got, want := resp.Code, 500; got != want {
-		t.Fatalf("Status => %v; want %v", got, want)
+		if got, want := resp.Code, tt.Code; got != want {
+			t.Fatalf("Status => %v; want %v", got, want)
+		}
 	}
 }
 
