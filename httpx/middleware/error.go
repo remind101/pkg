@@ -6,6 +6,7 @@ import (
 
 	"context"
 
+	"github.com/pkg/errors"
 	"github.com/remind101/pkg/httpx"
 	"github.com/remind101/pkg/reporter"
 )
@@ -55,14 +56,15 @@ func writeError(w http.ResponseWriter, err error) {
 }
 
 func statusCodeForError(err error) int {
-	if e, ok := err.(statusCoder); ok {
+	rootErr := errors.Cause(err)
+	if e, ok := rootErr.(statusCoder); ok {
 		return e.StatusCode()
 	}
-	if e, ok := err.(temporaryError); ok && e.Temporary() {
+	if e, ok := rootErr.(temporaryError); ok && e.Temporary() {
 		return http.StatusServiceUnavailable
 	}
 
-	if e, ok := err.(timeoutError); ok && e.Timeout() {
+	if e, ok := rootErr.(timeoutError); ok && e.Timeout() {
 		return http.StatusServiceUnavailable
 	}
 
