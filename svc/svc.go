@@ -69,7 +69,7 @@ func NewStandardHandler(opts HandlerOpts) http.Handler {
 	// Errors will no longer be returned after this middeware.
 	errorHandler := opts.ErrorHandler
 	if errorHandler == nil {
-                 errorHandler = middleware.ReportingErrorHandler
+		errorHandler = middleware.ReportingErrorHandler
 	}
 	h = middleware.HandleError(h, errorHandler)
 
@@ -143,6 +143,7 @@ func RunServer(h http.Handler, port string, writeTimeout time.Duration) {
 type Env struct {
 	Reporter reporter.Reporter
 	Logger   logger.Logger
+	Context  context.Context
 	Close    func() // Should be called in a defer in main().
 }
 
@@ -155,12 +156,18 @@ func InitAll() Env {
 	l := InitLogger()
 	logger.DefaultLogger = l
 
+	r := InitReporter()
+
+	ctx := reporter.WithReporter(context.Background(), r)
+
 	return Env{
 		Logger:   l,
-		Reporter: InitReporter(),
+		Reporter: r,
+		Context:  ctx,
 		Close: func() {
 			traceCloser()
 			metricsCloser()
+			reporter.Monitor(ctx)
 		},
 	}
 }
