@@ -7,6 +7,10 @@
 //		env := svc.InitAll()
 //		defer env.Close()
 //
+//		// Report panics in main()
+//		ctx := reporter.WithReporter(context.Background(), env.Reporter)
+//		defer reporter.Monitor(ctx)
+//
 //		r := httpx.NewRouter()
 //		// ... add routes
 //
@@ -69,7 +73,7 @@ func NewStandardHandler(opts HandlerOpts) http.Handler {
 	// Errors will no longer be returned after this middeware.
 	errorHandler := opts.ErrorHandler
 	if errorHandler == nil {
-                 errorHandler = middleware.ReportingErrorHandler
+		errorHandler = middleware.ReportingErrorHandler
 	}
 	h = middleware.HandleError(h, errorHandler)
 
