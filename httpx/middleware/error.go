@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"context"
@@ -34,6 +35,19 @@ var DefaultErrorHandler = func(ctx context.Context, err error, w http.ResponseWr
 var ReportingErrorHandler = func(ctx context.Context, err error, w http.ResponseWriter, r *http.Request) {
 	reporter.Report(ctx, err)
 	writeError(w, err)
+}
+
+var JSONReportingErrorHandler = func(ctx context.Context, err error, w http.ResponseWriter, r *http.Request) {
+	reporter.Report(ctx, err)
+	status := statusCodeForError(err)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+
+	errorResp := map[string]string{
+		"error": err.Error(),
+	}
+
+	json.NewEncoder(w).Encode(errorResp)
 }
 
 func writeError(w http.ResponseWriter, err error) {

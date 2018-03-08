@@ -10,6 +10,7 @@ import (
 	"context"
 
 	"github.com/remind101/pkg/httpx"
+	"github.com/remind101/pkg/reporter"
 )
 
 type tmpError string
@@ -37,9 +38,10 @@ func (s statusCodeError) StatusCode() int {
 
 func TestErrorMiddleware(t *testing.T) {
 	tests := []struct {
-		Error error
-		Body  string
-		Code  int
+		Error        error
+		Body         string
+		Code         int
+		ErrorHandler ErrorHandlerFunc
 	}{
 		{
 			Error: errors.New("boom"),
@@ -61,6 +63,12 @@ func TestErrorMiddleware(t *testing.T) {
 			Body:  "invalid request\n",
 			Code:  400,
 		},
+		{
+			Error:        errors.New("boom"),
+			Body:         "{\"error\":\"boom\"}\n",
+			Code:         500,
+			ErrorHandler: JSONReportingErrorHandler,
+		},
 	}
 
 	for _, tt := range tests {
@@ -68,16 +76,18 @@ func TestErrorMiddleware(t *testing.T) {
 			handler: httpx.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 				return tt.Error
 			}),
+			ErrorHandler: tt.ErrorHandler,
 		}
 		req, _ := http.NewRequest("GET", "/", nil)
 		resp := httptest.NewRecorder()
-		err := h.ServeHTTPContext(context.Background(), resp, req)
+		ctx := reporter.WithReporter(context.Background(), reporter.NewLogReporter())
+		err := h.ServeHTTPContext(ctx, resp, req)
 		if err != nil {
 			t.Fatal("Expected no error to be returned because it was handled")
 		}
 
 		if got, want := resp.Body.String(), tt.Body; got != want {
-			t.Fatalf("Body => %s; want %s", got, want)
+			t.Fatalf("Body => %#v; want %#v", got, want)
 		}
 
 		if got, want := resp.Code, tt.Code; got != want {
