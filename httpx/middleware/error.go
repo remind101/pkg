@@ -1,10 +1,12 @@
 package middleware
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"context"
 
+	"github.com/pkg/errors"
 	"github.com/remind101/pkg/httpx"
 	"github.com/remind101/pkg/reporter"
 )
@@ -36,19 +38,33 @@ var ReportingErrorHandler = func(ctx context.Context, err error, w http.Response
 	writeError(w, err)
 }
 
+var JSONReportingErrorHandler = func(ctx context.Context, err error, w http.ResponseWriter, r *http.Request) {
+	reporter.Report(ctx, err)
+	status := statusCodeForError(err)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+
+	errorResp := map[string]string{
+		"error": err.Error(),
+	}
+
+	json.NewEncoder(w).Encode(errorResp)
+}
+
 func writeError(w http.ResponseWriter, err error) {
 	http.Error(w, err.Error(), statusCodeForError(err))
 }
 
 func statusCodeForError(err error) int {
-	if e, ok := err.(statusCoder); ok {
+	rootErr := errors.Cause(err)
+	if e, ok := rootErr.(statusCoder); ok {
 		return e.StatusCode()
 	}
-	if e, ok := err.(temporaryError); ok && e.Temporary() {
+	if e, ok := rootErr.(temporaryError); ok && e.Temporary() {
 		return http.StatusServiceUnavailable
 	}
 
-	if e, ok := err.(timeoutError); ok && e.Timeout() {
+	if e, ok := rootErr.(timeoutError); ok && e.Timeout() {
 		return http.StatusServiceUnavailable
 	}
 
