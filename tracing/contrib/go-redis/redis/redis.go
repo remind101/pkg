@@ -24,7 +24,7 @@ func WrapClient(ctx context.Context, c *redis.Client, serviceName string) *redis
 			span.SetTag(dd_opentracing.ServiceName, serviceName)
 			span.SetTag(dd_opentracing.SpanType, "cache")
 			span.SetTag(dd_opentracing.ResourceName, cmd.Name())
-			span.SetTag("db.command", cmd.String())
+			span.SetTag("redis.command", cmd.String())
 			defer span.Finish()
 
 			err := oldProcess(cmd)
