@@ -8,8 +8,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/pkg/errors"
 	"context"
+
+	"github.com/pkg/errors"
 )
 
 // DefaultLevel is the default level a Report uses when reporting an error.
@@ -163,18 +164,20 @@ func newError(ctx context.Context, err error) *Error {
 // within the context.Context.
 func ReportWithLevel(ctx context.Context, level string, err error) error {
 	e := newError(ctx, err)
-
-	if r, ok := FromContext(ctx); ok {
-		return r.ReportWithLevel(ctx, level, e)
-	} else {
-		panic("No reporter in provided context.")
-	}
-
-	return nil
+	return reportWithLevel(ctx, level, e)
 }
 
 func Report(ctx context.Context, err error) error {
-	return ReportWithLevel(ctx, DefaultLevel, err)
+	e := newError(ctx, err)
+	return reportWithLevel(ctx, DefaultLevel, e)
+}
+
+func reportWithLevel(ctx context.Context, level string, err error) error {
+	if r, ok := FromContext(ctx); ok {
+		return r.ReportWithLevel(ctx, level, err)
+	}
+
+	panic("No reporter in provided context.")
 }
 
 // Monitors and reports panics. Useful in goroutines.
