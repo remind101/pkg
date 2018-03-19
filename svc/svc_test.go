@@ -20,7 +20,6 @@ func TestStandardHandler(t *testing.T) {
 	rep := reporter.NewLogReporter()
 	r := httpx.NewRouter()
 	r.Handle("/panic", httpx.HandlerFunc(func(ctx context.Context, rw http.ResponseWriter, r *http.Request) error {
-		panic("Hi")
 		var m []string
 		fmt.Println(m[1])
 		return nil
@@ -43,7 +42,7 @@ func TestStandardHandler(t *testing.T) {
 		t.Errorf("got %d; expected %d", got, want)
 	}
 
-	if got, want := buf.String(), " request_id=abc error=\"I panicked\" line=22 file=svc_test.go\n"; got != want {
+	if got, want := buf.String(), " request_id=abc error=\"runtime error: index out of range\" line=24 file=svc_test.go\n"; got != want {
 		t.Errorf("got %s; expected %s", got, want)
 	}
 }
