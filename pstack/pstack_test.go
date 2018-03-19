@@ -4,40 +4,82 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/pkg/errors"
+
 	"github.com/remind101/pkg/pstack"
 )
 
-func TestNew(t *testing.T) {
-	var err error
+type panicTest struct {
+	Fn     func()
+	TestFn func(error)
+}
+
+func TestPanics(t *testing.T) {
+	tests := []panicTest{
+		{
+			Fn: func() {},
+			TestFn: func(err error) {
+				if err != nil {
+					t.Error("expected err to be nil")
+				}
+			},
+		},
+		{
+			Fn: func() {
+				panic("boom!")
+			},
+			TestFn: func(err error) {
+				if err == nil {
+					t.Error("expected err to not be nil")
+				}
+				if e, ok := err.(pstack.StackTracer); ok {
+					if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "pstack_test.go:29"; got != want {
+						t.Errorf("got: %v; expected: %v", got, want)
+					}
+				}
+			},
+		},
+		{
+			Fn: func() {
+				panic(fmt.Errorf("boom!"))
+			},
+			TestFn: func(err error) {
+				if err == nil {
+					t.Error("expected err to not be nil")
+				}
+				if e, ok := err.(pstack.StackTracer); ok {
+					if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "pstack_test.go:44"; got != want {
+						t.Errorf("got: %v; expected: %v", got, want)
+					}
+				}
+			},
+		},
+		{
+			Fn: func() {
+				panic(errors.New("boom"))
+			},
+			TestFn: func(err error) {
+				if err == nil {
+					t.Error("expected err to not be nil")
+				}
+				if e, ok := err.(pstack.StackTracer); ok {
+					if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "pstack_test.go:59"; got != want {
+						t.Errorf("got: %v; expected: %v", got, want)
+					}
+				}
+			},
+		},
+	}
+	for _, tt := range tests {
+		runPanicTest(tt)
+	}
+}
+
+func runPanicTest(pt panicTest) {
 	defer func() {
-		if v := recover(); v != nil {
-			var ok bool
-			if err, ok = v.(error); ok {
-				err = pstack.New(err)
-			} else {
-				err = pstack.New(fmt.Errorf("%v", v))
-			}
-		}
-
-		if err == nil {
-			t.Fatal("expected err to not be nil")
-		}
-
-		if _, ok := err.(error); !ok {
-			t.Fatal("expected err to be an error")
-		}
-
-		if e, ok := err.(pstack.StackTracer); ok {
-			st := e.StackTrace()
-			s := fmt.Sprintf("%s:%d", st[0], st[0])
-			if got, want := s, "pstack_test.go:42"; got != want {
-				t.Errorf("got %s; expected %s", got, want)
-			}
-		} else {
-			t.Fatal("expected err to be a StackTracer")
-		}
+		err := pstack.New(recover())
+		pt.TestFn(err)
 	}()
 
-	var m []string
-	fmt.Println(m[1]) // Will cause a panic
+	pt.Fn()
 }

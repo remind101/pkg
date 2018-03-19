@@ -29,6 +29,8 @@ func (e *errorWithStack) StackTrace() errors.StackTrace {
 // New will convert a stack trace gathered from a panic to an errorWithStack
 func New(v interface{}) (e error) {
 	switch err := v.(type) {
+	case nil:
+		e = nil
 	case StackTracer:
 		e = err.(error)
 	case error:
