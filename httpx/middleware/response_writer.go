@@ -12,13 +12,13 @@ import (
 type ResponseWriter interface {
 	http.ResponseWriter
 	http.Flusher
-	// Status returns the status code of the response or 0 if the response has not been written.
+	// Status returns the status code of the response or 200 if the response has not been written.
 	Status() int
 }
 
 // NewResponseWriter creates a ResponseWriter that wraps an http.ResponseWriter
 func NewResponseWriter(rw http.ResponseWriter) ResponseWriter {
-	return &responseWriter{rw, 0}
+	return &responseWriter{rw, http.StatusOK}
 }
 
 type responseWriter struct {
