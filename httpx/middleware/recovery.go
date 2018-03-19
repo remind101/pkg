@@ -3,9 +3,12 @@ package middleware
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"context"
 
+	"github.com/go-stack/stack"
+	"github.com/pkg/errors"
 	"github.com/remind101/pkg/httpx"
 	"github.com/remind101/pkg/reporter"
 )
@@ -68,8 +71,12 @@ func (h *BasicRecovery) ServeHTTPContext(ctx context.Context, w http.ResponseWri
 		if v := recover(); v != nil {
 			var ok bool
 			if err, ok = v.(error); !ok {
-				err = fmt.Errorf("%v", v)
+				err = errors.Errorf("%v", v)
+			} else {
+				err = errors.WithStack(err)
 			}
+			callstack := stack.Trace()
+			fmt.Println(trimCallStack(callstack))
 			return
 		}
 	}()
@@ -81,4 +88,37 @@ func (h *BasicRecovery) ServeHTTPContext(ctx context.Context, w http.ResponseWri
 
 func BasicRecover(h httpx.Handler) *BasicRecovery {
 	return &BasicRecovery{handler: h}
+}
+
+func trimCallStack(cs stack.CallStack) stack.CallStack {
+	seenPanic := false
+	for len(cs) > 1 && (!seenPanic || (seenPanic && strings.HasPrefix(cs[0].String(), "panic:go"))) {
+		if strings.HasPrefix(cs[0].String(), "panic.go:") {
+			seenPanic = true
+		}
+		cs = cs[1:]
+	}
+	return cs
+}
+
+type errorWithStack struct {
+	Err   error
+	Stack errors.StackTrace
+}
+
+func (e errorWithStack) Error() string {
+	return e.Err.Error()
+}
+
+// Conver an error and stack trace to a stackTracer compatible with pkg/errors
+func NewErrorWithCallStack(err error, cs stack.CallStack) errorWithStack {
+	e := errorWithStack{
+		Err:   err,
+		Stack: make(errors.StackTrace, len(cs)),
+	}
+	return e
+}
+
+type stackTracer interface {
+	StackTrace() errors.StackTrace
 }
