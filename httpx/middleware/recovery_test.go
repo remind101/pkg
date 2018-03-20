@@ -54,8 +54,8 @@ func TestRecovery(t *testing.T) {
 
 	err := h.ServeHTTPContext(ctx, resp, req)
 
-	if err != errBoom {
-		t.Fatalf("err => %v; want %v", err, errBoom)
+	if err.Error() != errBoom.Error() {
+		t.Fatalf("err => %v; want %v", err.Error(), errBoom.Error())
 	}
 }
 

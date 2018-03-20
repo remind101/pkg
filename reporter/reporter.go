@@ -3,8 +3,6 @@
 package reporter
 
 import (
-	"fmt"
-	"net/http"
 	"strings"
 
 	"context"
@@ -45,16 +43,6 @@ func FromContext(ctx context.Context) (Reporter, bool) {
 // WithReporter inserts a Reporter into the context.Context.
 func WithReporter(ctx context.Context, r Reporter) context.Context {
 	return context.WithValue(ctx, reporterKey, r)
-}
-
-// AddContext adds contextual information to the Request object.
-func AddContext(ctx context.Context, key string, value interface{}) context.Context {
-	return errctx.WithInfo(ctx, key, value)
-}
-
-// AddRequest adds information from an http.Request to the Request object.
-func AddRequest(ctx context.Context, req *http.Request) context.Context {
-	return errctx.WithRequest(ctx, req)
 }
 
 // MultiError is an error implementation that wraps multiple errors.
@@ -106,13 +94,7 @@ func reportWithLevel(ctx context.Context, level string, err error) error {
 //     panic("oh noes") // will report, then crash.
 //   }(ctx)
 func Monitor(ctx context.Context) {
-	if v := recover(); v != nil {
-		var err error
-		if e, ok := v.(error); ok {
-			err = e
-		} else {
-			err = fmt.Errorf("panic: %v", v)
-		}
+	if err := errctx.Recover(ctx, recover()); err != nil {
 		Report(ctx, err)
 		panic(err)
 	}
