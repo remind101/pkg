@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/remind101/pkg/httpx"
+	"github.com/remind101/pkg/pstack"
 	"github.com/remind101/pkg/reporter"
 )
 
@@ -66,11 +67,7 @@ type BasicRecovery struct {
 func (h *BasicRecovery) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r *http.Request) (err error) {
 	defer func() {
 		if v := recover(); v != nil {
-			var ok bool
-			if err, ok = v.(error); !ok {
-				err = fmt.Errorf("%v", v)
-			}
-			return
+			err = pstack.New(v)
 		}
 	}()
 
