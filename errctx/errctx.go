@@ -28,6 +28,22 @@ func WithRequest(ctx context.Context, req *http.Request) context.Context {
 	return ctx
 }
 
+// Recover wraps the return value of recover() to capture a panic stack correctly.
+func Recover(ctx context.Context, v interface{}) (e error) {
+	switch err := v.(type) {
+	case nil:
+		e = nil
+	case stackTracer:
+		e = err.(error)
+	case error:
+		e = New(ctx, err)
+	default:
+		e = New(ctx, fmt.Errorf("%v", err))
+	}
+
+	return e
+}
+
 // Error wraps an error with additional information, like a stack trace,
 // contextual information, and an http request if provided.
 type Error struct {

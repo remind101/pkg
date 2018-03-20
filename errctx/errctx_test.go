@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"reflect"
 	"testing"
 
 	"github.com/remind101/pkg/errctx"
@@ -17,10 +18,15 @@ func TestNew(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/", nil)
 	req.Header.Set("Content-Type", "application/json")
 	ctx := errctx.WithRequest(context.Background(), req)
+	ctx = errctx.WithInfo(ctx, "foo", "bar")
 	e := errctx.New(ctx, errBoom)
 
 	if e.Request.Header.Get("Content-Type") != "application/json" {
 		t.Fatal("request information not set")
+	}
+
+	if v := e.Context["foo"]; !reflect.DeepEqual(v, "bar") {
+		t.Fatal("expected contextual information to be set")
 	}
 
 	stack := e.StackTrace()
@@ -96,4 +102,76 @@ func TestWithFormData(t *testing.T) {
 	if e.Request.Form.Get("password") != "" {
 		t.Fatal("expected request.Form[\"password\"] to have been removed by the reporter")
 	}
+}
+
+type panicTest struct {
+	Fn     func()
+	TestFn func(error)
+}
+
+func TestPanics(t *testing.T) {
+	tests := []panicTest{
+		{
+			Fn: func() {},
+			TestFn: func(err error) {
+				if err != nil {
+					t.Error("expected err to be nil")
+				}
+			},
+		},
+		{
+			Fn: func() {
+				panic("boom!")
+			},
+			TestFn: func(err error) {
+				if err == nil {
+					t.Error("expected err to not be nil")
+				}
+				e := err.(*errctx.Error)
+				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errctx_test.go:124"; got != want {
+					t.Errorf("got: %v; expected: %v", got, want)
+				}
+			},
+		},
+		{
+			Fn: func() {
+				panic(fmt.Errorf("boom!"))
+			},
+			TestFn: func(err error) {
+				if err == nil {
+					t.Error("expected err to not be nil")
+				}
+				e := err.(*errctx.Error)
+				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errctx_test.go:138"; got != want {
+					t.Errorf("got: %v; expected: %v", got, want)
+				}
+			},
+		},
+		{
+			Fn: func() {
+				panic(errctx.New(context.Background(), errors.New("boom")))
+			},
+			TestFn: func(err error) {
+				if err == nil {
+					t.Error("expected err to not be nil")
+				}
+				e := err.(*errctx.Error)
+				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errctx_test.go:152"; got != want {
+					t.Errorf("got: %v; expected: %v", got, want)
+				}
+			},
+		},
+	}
+	for _, tt := range tests {
+		runPanicTest(tt)
+	}
+}
+
+func runPanicTest(pt panicTest) {
+	defer func() {
+		err := errctx.Recover(context.Background(), recover())
+		pt.TestFn(err)
+	}()
+
+	pt.Fn()
 }
