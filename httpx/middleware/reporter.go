@@ -20,10 +20,10 @@ func (m *Reporter) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, 
 	ctx = reporter.WithReporter(ctx, m.reporter)
 
 	// Add the request to the reporter context.
-	reporter.AddRequest(ctx, r)
+	ctx = reporter.AddRequest(ctx, r)
 
 	// Add the request id to reporter context.
-	reporter.AddContext(ctx, "request_id", httpx.RequestID(ctx))
+	ctx = reporter.AddContext(ctx, "request_id", httpx.RequestID(ctx))
 
 	return m.handler.ServeHTTPContext(ctx, w, r)
 }

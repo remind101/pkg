@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"strings"
 
+	"context"
+
 	"github.com/remind101/newrelic"
+	"github.com/remind101/pkg/errctx"
 	"github.com/remind101/pkg/reporter"
 	"github.com/remind101/pkg/reporter/util"
-	"context"
 )
 
 // Ensure that Reporter implements the reporter.Reporter interface.
@@ -32,7 +34,7 @@ func (r *Reporter) ReportWithLevel(ctx context.Context, level string, err error)
 		stackFrameDelim = "\n"
 		stackTrace = make([]string, 0)
 
-		if e, ok := err.(*reporter.Error); ok {
+		if e, ok := err.(*errctx.Error); ok {
 			exceptionType = util.ClassName(e.Err)
 
 			for _, frame := range e.StackTrace() {

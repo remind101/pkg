@@ -11,6 +11,7 @@ import (
 
 	"context"
 
+	"github.com/remind101/pkg/errctx"
 	"github.com/remind101/pkg/reporter"
 	"github.com/stvp/rollbar"
 )
@@ -30,7 +31,7 @@ func TestReportsThingsToRollbar(t *testing.T) {
 	defer ts.Close()
 
 	boom := fmt.Errorf("boom")
-	err := &reporter.Error{
+	err := &errctx.Error{
 		Err:     boom,
 		Context: map[string]interface{}{"request_id": "1234"},
 		Request: func() *http.Request {

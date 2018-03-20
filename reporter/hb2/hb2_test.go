@@ -13,6 +13,7 @@ import (
 
 	"context"
 
+	"github.com/remind101/pkg/errctx"
 	"github.com/remind101/pkg/reporter"
 )
 
@@ -35,7 +36,7 @@ func TestHb2ReportsErrorContext(t *testing.T) {
 	}{
 		{
 			name: "error with context",
-			err: &reporter.Error{
+			err: &errctx.Error{
 				Err: boom,
 				Context: map[string]interface{}{
 					"lol": "wut",
@@ -48,7 +49,7 @@ func TestHb2ReportsErrorContext(t *testing.T) {
 		},
 		{
 			name: "error during request",
-			err: &reporter.Error{
+			err: &errctx.Error{
 				Err: boom,
 				Context: map[string]interface{}{
 					"request_id": "1234",

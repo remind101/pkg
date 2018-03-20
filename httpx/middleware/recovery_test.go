@@ -6,9 +6,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"context"
+
+	"github.com/remind101/pkg/errctx"
 	"github.com/remind101/pkg/httpx"
 	"github.com/remind101/pkg/reporter"
-	"context"
 )
 
 func TestRecovery(t *testing.T) {
@@ -21,7 +23,7 @@ func TestRecovery(t *testing.T) {
 		Reporter: reporter.ReporterFunc(func(ctx context.Context, level string, err error) error {
 			called = true
 
-			e := err.(*reporter.Error)
+			e := err.(*errctx.Error)
 
 			if e.Err != errBoom {
 				t.Fatalf("err => %v; want %v", err, errBoom)

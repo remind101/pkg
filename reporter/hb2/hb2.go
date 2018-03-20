@@ -8,10 +8,11 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/pkg/errors"
-	"github.com/remind101/pkg/reporter"
-	"github.com/remind101/pkg/reporter/hb2/internal/honeybadger-go"
 	"context"
+
+	"github.com/pkg/errors"
+	"github.com/remind101/pkg/errctx"
+	"github.com/remind101/pkg/reporter/hb2/internal/honeybadger-go"
 )
 
 // Headers that won't be sent to honeybadger.
@@ -57,7 +58,7 @@ func makeHoneybadgerFrames(stack errors.StackTrace) []*honeybadger.Frame {
 	return frames
 }
 
-func makeHoneybadgerError(err *reporter.Error) honeybadger.Error {
+func makeHoneybadgerError(err *errctx.Error) honeybadger.Error {
 	cause := err.Cause()
 	frames := makeHoneybadgerFrames(err.StackTrace())
 	return honeybadger.Error{
@@ -71,7 +72,7 @@ func makeHoneybadgerError(err *reporter.Error) honeybadger.Error {
 func (r *HbReporter) ReportWithLevel(ctx context.Context, level string, err error) error {
 	extras := []interface{}{}
 
-	if e, ok := err.(*reporter.Error); ok {
+	if e, ok := err.(*errctx.Error); ok {
 		extras = append(extras, getContextData(e))
 		if r := e.Request; r != nil {
 			extras = append(extras, honeybadger.Params(r.Form), getRequestData(r), *r.URL)
@@ -99,7 +100,7 @@ func getRequestData(r *http.Request) honeybadger.CGIData {
 	return cgiData
 }
 
-func getContextData(err *reporter.Error) honeybadger.Context {
+func getContextData(err *errctx.Error) honeybadger.Context {
 	ctx := honeybadger.Context{}
 	for key, value := range err.Context {
 		ctx[key] = value

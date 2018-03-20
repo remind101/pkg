@@ -1,12 +1,14 @@
 package nr
 
 import (
-	"errors"
 	"testing"
+
+	"github.com/pkg/errors"
+
+	"context"
 
 	"github.com/remind101/newrelic"
 	"github.com/remind101/pkg/reporter"
-	"context"
 )
 
 var (
@@ -14,14 +16,14 @@ var (
 	errBoom = errors.New("boom")
 
 	// boom with backtrace.
-	errBoomMore = reporter.NewError(errBoom, 0)
+	errBoomMore = errors.WithStack(errBoom)
 )
 
 func TestReport(t *testing.T) {
 	tx := newrelic.NewTx("GET /boom")
 	tx.Reporter = &TestReporter{
 		f: func(id int64, exceptionType, errorMessage, stackTrace, stackFrameDelim string) {
-			if got, want := exceptionType, "*errors.errorString"; got != want {
+			if got, want := exceptionType, "*errors.withStack"; got != want {
 				t.Errorf("exceptionType => %v; want %v", got, want)
 			}
 			if got, want := errorMessage, "boom"; got != want {

@@ -33,10 +33,10 @@ func (h *Recovery) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, 
 	ctx = reporter.WithReporter(ctx, h.Reporter)
 
 	// Add the request to the context.
-	reporter.AddRequest(ctx, r)
+	ctx = reporter.AddRequest(ctx, r)
 
 	// Add the request id
-	reporter.AddContext(ctx, "request_id", httpx.RequestID(ctx))
+	ctx = reporter.AddContext(ctx, "request_id", httpx.RequestID(ctx))
 
 	defer func() {
 		if v := recover(); v != nil {
