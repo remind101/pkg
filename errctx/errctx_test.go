@@ -19,7 +19,7 @@ func TestNew(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	ctx := errctx.WithRequest(context.Background(), req)
 	ctx = errctx.WithInfo(ctx, "foo", "bar")
-	e := errctx.New(ctx, errBoom)
+	e := errctx.New(ctx, errBoom, 0)
 
 	if e.Request.Header.Get("Content-Type") != "application/json" {
 		t.Fatal("request information not set")
@@ -46,7 +46,7 @@ func TestWithSensitiveData(t *testing.T) {
 	req.Header.Set("Authorization", "this-is-a-secret")
 	req.Header.Set("Cookie", "r101_auth_token=this-is-sensitive")
 	ctx := errctx.WithRequest(context.Background(), req)
-	e := errctx.New(ctx, errBoom)
+	e := errctx.New(ctx, errBoom, 0)
 
 	if e.Request.URL.Scheme != "http" {
 		t.Fatalf("expected request.URL.Scheme to be \"http\", got: %v", e.Request.URL.Scheme)
@@ -89,7 +89,7 @@ func TestWithFormData(t *testing.T) {
 	req.Form.Add("username", "admin")
 	req.Form.Add("password", "this-is-a-secret")
 	ctx := errctx.WithRequest(context.Background(), req)
-	e := errctx.New(ctx, errBoom)
+	e := errctx.New(ctx, errBoom, 0)
 
 	if e.Request.Form.Get("key") != "foo" {
 		t.Fatalf("expected request.Form[\"key\"] to be \"foo\", got: %v", e.Request.Form.Get("key"))
@@ -149,7 +149,7 @@ func TestPanics(t *testing.T) {
 		},
 		{
 			Fn: func() {
-				panic(errctx.New(context.Background(), errors.New("boom")))
+				panic(errctx.New(context.Background(), errors.New("boom"), 0))
 			},
 			TestFn: func(err error) {
 				if err == nil {

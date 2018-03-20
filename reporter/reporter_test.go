@@ -8,13 +8,15 @@ import (
 	"testing"
 
 	"context"
+
+	"github.com/remind101/pkg/errctx"
 )
 
 var errBoom = errors.New("boom")
 
 func TestReport(t *testing.T) {
 	r := ReporterFunc(func(ctx context.Context, level string, err error) error {
-		e := err.(*Error)
+		e := err.(*errctx.Error)
 
 		if e.Request.Header.Get("Content-Type") != "application/json" {
 			t.Fatal("request information not set")
@@ -36,7 +38,7 @@ func TestReport(t *testing.T) {
 
 	req, _ := http.NewRequest("GET", "/", nil)
 	req.Header.Set("Content-Type", "application/json")
-	AddRequest(ctx, req)
+	ctx = AddRequest(ctx, req)
 
 	if err := ReportWithLevel(ctx, "error", errBoom); err != nil {
 		t.Fatal(err)
@@ -74,7 +76,7 @@ func TestReportWithNoReporterInContext(t *testing.T) {
 
 func TestReportWithSensitiveData(t *testing.T) {
 	r := ReporterFunc(func(ctx context.Context, level string, err error) error {
-		e := err.(*Error)
+		e := err.(*errctx.Error)
 
 		if e.Request.URL.Scheme != "http" {
 			t.Fatalf("expected request.URL.Scheme to be \"http\", got: %v", e.Request.URL.Scheme)
@@ -116,7 +118,7 @@ func TestReportWithSensitiveData(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "this-is-a-secret")
 	req.Header.Set("Cookie", "r101_auth_token=this-is-sensitive")
-	AddRequest(ctx, req)
+	ctx = AddRequest(ctx, req)
 
 	if err := ReportWithLevel(ctx, "error", errBoom); err != nil {
 		t.Fatal(err)
@@ -125,7 +127,7 @@ func TestReportWithSensitiveData(t *testing.T) {
 
 func TestReportWithFormData(t *testing.T) {
 	r := ReporterFunc(func(ctx context.Context, level string, err error) error {
-		e := err.(*Error)
+		e := err.(*errctx.Error)
 
 		if e.Request.Form.Get("key") != "foo" {
 			t.Fatalf("expected request.Form[\"key\"] to be \"foo\", got: %v", e.Request.Form.Get("key"))
@@ -149,7 +151,7 @@ func TestReportWithFormData(t *testing.T) {
 	req.Form.Add("key", "foo")
 	req.Form.Add("username", "admin")
 	req.Form.Add("password", "this-is-a-secret")
-	AddRequest(ctx, req)
+	ctx = AddRequest(ctx, req)
 
 	if err := ReportWithLevel(ctx, "error", errBoom); err != nil {
 		t.Fatal(err)

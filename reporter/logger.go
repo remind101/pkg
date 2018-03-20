@@ -9,6 +9,10 @@ import (
 	"github.com/remind101/pkg/logger"
 )
 
+type stackTracer interface {
+	StackTrace() errors.StackTrace
+}
+
 // LogReporter is a Handler that logs the error to a log.Logger.
 type LogReporter struct{}
 
@@ -21,8 +25,8 @@ func (h *LogReporter) ReportWithLevel(ctx context.Context, level string, err err
 	var file, line string
 	var stack errors.StackTrace
 
-	if err_with_stack, ok := err.(stackTracer); ok {
-		stack = err_with_stack.StackTrace()
+	if errWithStack, ok := err.(stackTracer); ok {
+		stack = errWithStack.StackTrace()
 	}
 	if stack != nil && len(stack) > 0 {
 		file = fmt.Sprintf("%s", stack[0])

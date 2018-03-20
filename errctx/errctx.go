@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -36,9 +35,9 @@ func Recover(ctx context.Context, v interface{}) (e error) {
 	case stackTracer:
 		e = err.(error)
 	case error:
-		e = New(ctx, err)
+		e = New(ctx, err, 0)
 	default:
-		e = New(ctx, fmt.Errorf("%v", err))
+		e = New(ctx, fmt.Errorf("%v", err), 0)
 	}
 
 	return e
@@ -63,11 +62,11 @@ type Error struct {
 
 // New returns a new Error instance. If err is already an Error instance,
 // it will be returned, otherwise err will be wrapped with Error.
-func New(ctx context.Context, err error) *Error {
+func New(ctx context.Context, err error, skip int) *Error {
 	if e, ok := err.(*Error); ok {
 		return e
 	}
-	return new(err, 1).WithContext(ctx)
+	return new(err, skip+1).WithContext(ctx)
 }
 
 // new wraps err as an Error and generates a stack trace pointing at the
@@ -102,23 +101,6 @@ func (e *Error) WithContext(ctx context.Context) *Error {
 		e.Request = i.request
 	}
 	return e
-}
-
-// MultiError is an error implementation that wraps multiple errors.
-type MultiError struct {
-	Errors []error
-}
-
-// Error implements the error interface. It simply joins all of the individual
-// error messages with a comma.
-func (e *MultiError) Error() string {
-	var m []string
-
-	for _, err := range e.Errors {
-		m = append(m, err.Error())
-	}
-
-	return strings.Join(m, ", ")
 }
 
 type causer interface {
