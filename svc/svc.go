@@ -47,6 +47,7 @@ type HandlerOpts struct {
 	ForwardingHeaders []string
 	BasicAuth         string
 	ErrorHandler      middleware.ErrorHandlerFunc
+	HandlerTimeout    time.Duration
 }
 
 // NewStandardHandler returns an http.Handler with a standard middleware stack.
@@ -54,12 +55,17 @@ type HandlerOpts struct {
 // Order is pretty important as some middleware depends on others having run
 // already.
 func NewStandardHandler(opts HandlerOpts) http.Handler {
-	var h httpx.Handler
+	h := httpx.Handler(opts.Router)
+
+	if opts.HandlerTimeout != 0 {
+		// Timeout requests after the given Timeout duration.
+		h = middleware.TimeoutHandler(h, opts.HandlerTimeout)
+	}
 
 	// Recover from panics. A panic is converted to an error. This should be first,
 	// even though it means panics in middleware will not be recovered, because
 	// later middleware expects endpoint panics to be returned as an error.
-	h = middleware.BasicRecover(opts.Router)
+	h = middleware.BasicRecover(h)
 
 	// Add request tracing. Must go before the HandleError middleware in order
 	// to capture any errors from the endpoint handler.
