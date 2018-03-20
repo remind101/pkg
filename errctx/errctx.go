@@ -28,15 +28,6 @@ func WithRequest(ctx context.Context, req *http.Request) context.Context {
 	return ctx
 }
 
-// Wrap returns a new Error instance. If err is already an Error instance,
-// it will be returned, otherwise err will be wrapped with Error.
-func Wrap(ctx context.Context, err error) *Error {
-	if e, ok := err.(*Error); ok {
-		return e
-	}
-	return New(err, 2).WithContext(ctx)
-}
-
 // Error wraps an error with additional information, like a stack trace,
 // contextual information, and an http request if provided.
 type Error struct {
@@ -54,9 +45,18 @@ type Error struct {
 	stackTrace errors.StackTrace
 }
 
-// New wraps err as an Error and generates a stack trace pointing at the
+// New returns a new Error instance. If err is already an Error instance,
+// it will be returned, otherwise err will be wrapped with Error.
+func New(ctx context.Context, err error) *Error {
+	if e, ok := err.(*Error); ok {
+		return e
+	}
+	return new(err, 1).WithContext(ctx)
+}
+
+// new wraps err as an Error and generates a stack trace pointing at the
 // caller of this function.
-func New(err error, skip int) *Error {
+func new(err error, skip int) *Error {
 	return &Error{
 		Err:        err,
 		stackTrace: stacktrace(err, skip+1),
