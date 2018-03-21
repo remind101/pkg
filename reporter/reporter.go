@@ -3,21 +3,15 @@
 package reporter
 
 import (
-	"fmt"
-	"net/http"
-	"net/url"
 	"strings"
 
-	"context"
+	"github.com/remind101/pkg/httpx/errors"
 
-	"github.com/pkg/errors"
+	"context"
 )
 
 // DefaultLevel is the default level a Report uses when reporting an error.
 const DefaultLevel = "error"
-
-// DefaultMax is the default maximum number of lines to show from the stack trace.
-var DefaultMax = 1024
 
 // Reporter represents an error handler.
 type Reporter interface {
@@ -45,130 +39,37 @@ func FromContext(ctx context.Context) (Reporter, bool) {
 
 // WithReporter inserts a Reporter into the context.Context.
 func WithReporter(ctx context.Context, r Reporter) context.Context {
-	return context.WithValue(withInfo(ctx), reporterKey, r)
+	return context.WithValue(ctx, reporterKey, r)
 }
 
-// AddContext adds contextual information to the Request object.
-func AddContext(ctx context.Context, key string, value interface{}) {
-	i := infoFromContext(ctx)
-	i.context[key] = value
+// MultiError is an error implementation that wraps multiple errors.
+type MultiError struct {
+	Errors []error
 }
 
-// AddRequest adds information from an http.Request to the Request object.
-func AddRequest(ctx context.Context, req *http.Request) {
-	i := infoFromContext(ctx)
-	i.request = safeCloneRequest(req)
+// Error implements the error interface. It simply joins all of the individual
+// error messages with a comma.
+func (e *MultiError) Error() string {
+	var m []string
+
+	for _, err := range e.Errors {
+		m = append(m, err.Error())
+	}
+
+	return strings.Join(m, ", ")
 }
 
-func safeCloneRequest(req *http.Request) *http.Request {
-	return &http.Request{
-		Method:     req.Method,
-		URL:        safeCloneURL(req.URL),
-		Proto:      req.Proto,
-		ProtoMajor: req.ProtoMajor,
-		ProtoMinor: req.ProtoMinor,
-		Header:     *safeCloneHeader(&req.Header),
-		// Body may have sensitive information,
-		// besides all the data should be already parsed as Form and/or PostForm
-		Body:             nil,
-		ContentLength:    req.ContentLength,
-		TransferEncoding: copyStringArray(req.TransferEncoding),
-		Close:            req.Close,
-		Host:             req.Host,
-		Form:             *safeCloneForm(&req.Form),
-		PostForm:         *safeCloneForm(&req.PostForm),
-		// MultipartForm may have sensitive information
-		MultipartForm: nil,
-		// Trailer isn't that important for reporting purposes
-		Trailer:    nil,
-		RemoteAddr: req.RemoteAddr,
-		RequestURI: req.RequestURI,
-	}
-}
-
-func safeCloneURL(u *url.URL) *url.URL {
-	if u == nil {
-		return nil
-	}
-	return &url.URL{
-		Scheme: u.Scheme,
-		// req.User may have sensitive information, like username and password
-		Host:       u.Host,
-		Path:       u.Path,
-		RawPath:    u.RawPath,
-		ForceQuery: u.ForceQuery,
-		RawQuery:   u.RawQuery,
-		Fragment:   u.Fragment,
-	}
-}
-
-var sensitiveHeaders = map[string]bool{
-	"Authorization": true,
-	"Cookie":        true,
-}
-
-func safeCloneHeader(header *http.Header) *http.Header {
-	if header == nil {
-		return nil
-	}
-	safeHeader := http.Header{}
-	for key, valueArray := range *header {
-		if _, ok := sensitiveHeaders[key]; ok {
-			continue
-		}
-		safeHeader[key] = copyStringArray(valueArray)
-	}
-	return &safeHeader
-}
-
-func copyStringArray(values []string) []string {
-	if values == nil {
-		return nil
-	}
-	safeArray := make([]string, len(values))
-	for idx, value := range values {
-		safeArray[idx] = value
-	}
-	return safeArray
-}
-
-var sensitiveFormKeys = map[string]bool{
-	"password": true,
-}
-
-func safeCloneForm(form *url.Values) *url.Values {
-	if form == nil {
-		return nil
-	}
-	safeForm := url.Values{}
-	for key, values := range *form {
-		if _, ok := sensitiveFormKeys[key]; ok {
-			continue
-		}
-		safeForm[key] = copyStringArray(values)
-	}
-	return &safeForm
-}
-
-// newError returns a new Error instance. If err is already an Error instance,
-// it will be returned, otherwise err will be wrapped with NewErrorWithContext.
-func newError(ctx context.Context, err error) *Error {
-	if e, ok := err.(*Error); ok {
-		return e
-	} else {
-		return NewErrorWithContext(ctx, err, 2)
-	}
+// ReportWithLevel wraps the err as an Error and reports it the the Reporter embedded
+// within the context.Context.
+func ReportWithLevel(ctx context.Context, level string, err error) error {
+	e := errors.New(ctx, err, 1)
+	return reportWithLevel(ctx, level, e)
 }
 
 // Report wraps the err as an Error and reports it the the Reporter embedded
 // within the context.Context.
-func ReportWithLevel(ctx context.Context, level string, err error) error {
-	e := newError(ctx, err)
-	return reportWithLevel(ctx, level, e)
-}
-
 func Report(ctx context.Context, err error) error {
-	e := newError(ctx, err)
+	e := errors.New(ctx, err, 1)
 	return reportWithLevel(ctx, DefaultLevel, e)
 }
 
@@ -190,177 +91,10 @@ func reportWithLevel(ctx context.Context, level string, err error) error {
 //     panic("oh noes") // will report, then crash.
 //   }(ctx)
 func Monitor(ctx context.Context) {
-	if v := recover(); v != nil {
-		var err error
-		if e, ok := v.(error); ok {
-			err = e
-		} else {
-			err = fmt.Errorf("panic: %v", v)
-		}
+	if err := errors.Recover(ctx, recover()); err != nil {
 		Report(ctx, err)
 		panic(err)
 	}
-}
-
-// Error wraps an error with additional information, like a stack trace,
-// contextual information, and an http request if provided.
-type Error struct {
-	// The error that was generated.
-	Err error
-
-	// Any freeform contextual information about that error.
-	Context map[string]interface{}
-
-	// If provided, an http request that generated the error.
-	Request *http.Request
-
-	// This is private so that it can be exposed via StackTrace(),
-	// which implements the stackTracker interface.
-	stackTrace errors.StackTrace
-}
-
-// Make Error implement the error interface.
-func (e *Error) Error() string {
-	return e.Err.Error()
-}
-
-// Make Error implement the causer interface.
-func (e *Error) Cause() error {
-	return errors.Cause(e.Err)
-}
-
-// Make Error implement the stackTracer interface.
-func (e *Error) StackTrace() errors.StackTrace {
-	return e.stackTrace
-}
-
-// NewError wraps err as an Error and generates a stack trace pointing at the
-// caller of this function.
-func NewError(err error, skip int) *Error {
-	return &Error{
-		Err:        err,
-		stackTrace: stacktrace(err, skip+1),
-	}
-}
-
-// NewErrorWithContext returns a new Error with contextual information added.
-func NewErrorWithContext(ctx context.Context, err error, skip int) *Error {
-	e := NewError(err, skip+1)
-	i := infoFromContext(ctx)
-	e.Context = i.context
-	e.Request = i.request
-	return e
-}
-
-// MutliError is an error implementation that wraps multiple errors.
-type MultiError struct {
-	Errors []error
-}
-
-// Error implements the error interface. It simply joins all of the individual
-// error messages with a comma.
-func (e *MultiError) Error() string {
-	var m []string
-
-	for _, err := range e.Errors {
-		m = append(m, err.Error())
-	}
-
-	return strings.Join(m, ", ")
-}
-
-type causer interface {
-	Cause() error
-}
-
-type stackTracer interface {
-	StackTrace() errors.StackTrace
-}
-
-// It generates a brand new stack trace given an error and
-// the number of frames that should be skipped,
-// from innermost to outermost frames.
-func gen_stacktrace(err error, skip int) errors.StackTrace {
-	var stack errors.StackTrace
-	err_with_stack := errors.WithStack(err)
-	stack = err_with_stack.(stackTracer).StackTrace()
-	skip += 1
-
-	// if it is recovering from a panic() call,
-	// reset the stack trace at that point
-	for index, frame := range stack {
-		file := fmt.Sprintf("%s", frame)
-		if file == "panic.go" {
-			skip = index + 1
-			break
-		}
-	}
-
-	return stack[skip:]
-}
-
-// There are two interfaces that drive this implementation:
-//
-//   * causer
-//     - it unwraps an error instance in a chain of errors created with errors.Wrap
-//     - therefore, the last one in the chain is the root cause (inner-most)
-//
-//   * stackTracer
-//     - not all errors in the aforementioned chain may have a stack trace,
-//
-// It returns the innermost stack trace in a chain of errors because it is
-// the closest to the root cause.
-//
-func get_stacktrace(err error) errors.StackTrace {
-	var stack errors.StackTrace
-	for err != nil {
-		err_with_stack, stack_ok := err.(stackTracer)
-		if stack_ok && err_with_stack.StackTrace() != nil {
-			stack = err_with_stack.StackTrace()
-		}
-		if err_with_cause, causer_ok := err.(causer); causer_ok {
-			err = err_with_cause.Cause()
-		} else {
-			// end of chain
-			break
-		}
-	}
-	return stack
-}
-
-func stacktrace(err error, skip int) errors.StackTrace {
-	stack := get_stacktrace(err)
-	if stack == nil {
-		stack = gen_stacktrace(err, skip+1)
-	}
-	if len(stack) > DefaultMax {
-		stack = stack[:DefaultMax]
-	}
-	return stack
-}
-
-// info is used internally to store contextual information. Any empty info
-// gets inserted into the context.Context when the Reporter is inserted, which
-// allows downstream consumers to add additional information to this object.
-type info struct {
-	context map[string]interface{}
-	request *http.Request
-}
-
-func newInfo() *info {
-	return &info{context: make(map[string]interface{})}
-}
-
-func withInfo(ctx context.Context) context.Context {
-	return context.WithValue(ctx, infoKey, newInfo())
-}
-
-func infoFromContext(ctx context.Context) *info {
-	i, ok := ctx.Value(infoKey).(*info)
-	if !ok {
-		return newInfo()
-	}
-	return i
 }
 
 // key used to store context values from within this package.
@@ -368,5 +102,4 @@ type key int
 
 const (
 	reporterKey key = iota
-	infoKey
 )

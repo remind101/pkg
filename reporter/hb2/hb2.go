@@ -5,13 +5,13 @@ package hb2
 import (
 	"fmt"
 	"net/http"
-	"reflect"
 	"strings"
 
-	"github.com/pkg/errors"
-	"github.com/remind101/pkg/reporter"
-	"github.com/remind101/pkg/reporter/hb2/internal/honeybadger-go"
 	"context"
+
+	"github.com/pkg/errors"
+	"github.com/remind101/pkg/reporter/hb2/internal/honeybadger-go"
+	"github.com/remind101/pkg/reporter/util"
 )
 
 // Headers that won't be sent to honeybadger.
@@ -44,40 +44,21 @@ func (r *HbReporter) GetConfig() *honeybadger.Configuration {
 	return r.client.Config
 }
 
-func makeHoneybadgerFrames(stack errors.StackTrace) []*honeybadger.Frame {
-	length := len(stack)
-	frames := make([]*honeybadger.Frame, length)
-	for index, frame := range stack[:length] {
-		frames[index] = &honeybadger.Frame{
-			Number: fmt.Sprintf("%d", frame),
-			File:   fmt.Sprintf("%s", frame),
-			Method: fmt.Sprintf("%n", frame),
-		}
-	}
-	return frames
-}
-
-func makeHoneybadgerError(err *reporter.Error) honeybadger.Error {
-	cause := err.Cause()
-	frames := makeHoneybadgerFrames(err.StackTrace())
-	return honeybadger.Error{
-		Message: err.Error(),
-		Class:   reflect.TypeOf(cause).String(),
-		Stack:   frames,
-	}
-}
-
 // Report reports the error to honeybadger.
 func (r *HbReporter) ReportWithLevel(ctx context.Context, level string, err error) error {
 	extras := []interface{}{}
 
-	if e, ok := err.(*reporter.Error); ok {
+	if e, ok := err.(util.Contexter); ok {
 		extras = append(extras, getContextData(e))
-		if r := e.Request; r != nil {
+	}
+
+	if e, ok := err.(util.Requester); ok {
+		if r := e.Request(); r != nil {
 			extras = append(extras, honeybadger.Params(r.Form), getRequestData(r), *r.URL)
 		}
-		err = makeHoneybadgerError(e)
 	}
+
+	err = makeHoneybadgerError(err)
 
 	_, clientErr := r.client.Notify(err, extras...)
 	return clientErr
@@ -99,10 +80,41 @@ func getRequestData(r *http.Request) honeybadger.CGIData {
 	return cgiData
 }
 
-func getContextData(err *reporter.Error) honeybadger.Context {
+func getContextData(err util.Contexter) honeybadger.Context {
 	ctx := honeybadger.Context{}
-	for key, value := range err.Context {
+	for key, value := range err.ContextData() {
 		ctx[key] = value
 	}
 	return ctx
+}
+
+func makeHoneybadgerError(err error) honeybadger.Error {
+	className := util.ClassName(err)
+	if e, ok := err.(util.Causer); ok {
+		className = util.ClassName(e.Cause())
+	}
+
+	frames := make([]*honeybadger.Frame, 0)
+	if e, ok := err.(util.StackTracer); ok {
+		frames = makeHoneybadgerFrames(e.StackTrace())
+	}
+
+	return honeybadger.Error{
+		Message: err.Error(),
+		Class:   className,
+		Stack:   frames,
+	}
+}
+
+func makeHoneybadgerFrames(stack errors.StackTrace) []*honeybadger.Frame {
+	length := len(stack)
+	frames := make([]*honeybadger.Frame, length)
+	for index, frame := range stack[:length] {
+		frames[index] = &honeybadger.Frame{
+			Number: fmt.Sprintf("%d", frame),
+			File:   fmt.Sprintf("%s", frame),
+			Method: fmt.Sprintf("%n", frame),
+		}
+	}
+	return frames
 }

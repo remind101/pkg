@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/remind101/pkg/httpx"
+	"github.com/remind101/pkg/httpx/errors"
 	"github.com/remind101/pkg/reporter"
 )
 
@@ -20,10 +21,10 @@ func (m *Reporter) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, 
 	ctx = reporter.WithReporter(ctx, m.reporter)
 
 	// Add the request to the reporter context.
-	reporter.AddRequest(ctx, r)
+	ctx = errors.WithRequest(ctx, r)
 
 	// Add the request id to reporter context.
-	reporter.AddContext(ctx, "request_id", httpx.RequestID(ctx))
+	ctx = errors.WithInfo(ctx, "request_id", httpx.RequestID(ctx))
 
 	return m.handler.ServeHTTPContext(ctx, w, r)
 }

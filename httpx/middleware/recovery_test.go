@@ -1,33 +1,35 @@
 package middleware
 
 import (
-	"errors"
+	gerrors "errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/remind101/pkg/httpx"
-	"github.com/remind101/pkg/reporter"
 	"context"
+
+	"github.com/remind101/pkg/httpx"
+	"github.com/remind101/pkg/httpx/errors"
+	"github.com/remind101/pkg/reporter"
 )
 
 func TestRecovery(t *testing.T) {
 	var (
 		called  bool
-		errBoom = errors.New("boom")
+		errBoom = gerrors.New("boom")
 	)
 
 	h := &Recovery{
 		Reporter: reporter.ReporterFunc(func(ctx context.Context, level string, err error) error {
 			called = true
 
-			e := err.(*reporter.Error)
+			e := err.(*errors.Error)
 
 			if e.Err != errBoom {
 				t.Fatalf("err => %v; want %v", err, errBoom)
 			}
 
-			if got, want := e.Context["request_id"], "1234"; got != want {
+			if got, want := e.ContextData()["request_id"], "1234"; got != want {
 				t.Fatalf("RequestID => %s; want %s", got, want)
 			}
 
@@ -52,8 +54,8 @@ func TestRecovery(t *testing.T) {
 
 	err := h.ServeHTTPContext(ctx, resp, req)
 
-	if err != errBoom {
-		t.Fatalf("err => %v; want %v", err, errBoom)
+	if err.Error() != errBoom.Error() {
+		t.Fatalf("err => %v; want %v", err.Error(), errBoom.Error())
 	}
 }
 

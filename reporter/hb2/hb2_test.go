@@ -2,7 +2,7 @@ package hb2
 
 import (
 	"encoding/json"
-	"errors"
+	gerrors "errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -13,6 +13,7 @@ import (
 
 	"context"
 
+	"github.com/remind101/pkg/httpx/errors"
 	"github.com/remind101/pkg/reporter"
 )
 
@@ -26,20 +27,20 @@ func TestHb2ReportsErrorContext(t *testing.T) {
 	defer ts.Close()
 	r := NewReporter(Config{Endpoint: ts.URL})
 
-	boom := errors.New("The Error")
+	boom := gerrors.New("The Error")
 	tests := []struct {
-		name string
-		err  error
-		path string
-		want map[string]interface{}
+		name    string
+		err     error
+		context map[string]interface{}
+		request *http.Request
+		path    string
+		want    map[string]interface{}
 	}{
 		{
 			name: "error with context",
-			err: &reporter.Error{
-				Err: boom,
-				Context: map[string]interface{}{
-					"lol": "wut",
-				},
+			err:  boom,
+			context: map[string]interface{}{
+				"lol": "wut",
 			},
 			path: "request.context",
 			want: map[string]interface{}{
@@ -48,22 +49,20 @@ func TestHb2ReportsErrorContext(t *testing.T) {
 		},
 		{
 			name: "error during request",
-			err: &reporter.Error{
-				Err: boom,
-				Context: map[string]interface{}{
-					"request_id": "1234",
-				},
-				Request: func() *http.Request {
-					form := url.Values{}
-					form.Add("param1", "param1value")
-					req, _ := http.NewRequest("GET", "/api/foo", nil)
-					req.Header.Set("Content-Type", "application/json")
-					req.Header.Set("X-Forwarded-For", "127.0.0.1")
-					req.Header.Set("Authorization", "Basic shouldnotseeit")
-					req.Form = form
-					return req
-				}(),
+			err:  boom,
+			context: map[string]interface{}{
+				"request_id": "1234",
 			},
+			request: func() *http.Request {
+				form := url.Values{}
+				form.Add("param1", "param1value")
+				req, _ := http.NewRequest("GET", "/api/foo", nil)
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("X-Forwarded-For", "127.0.0.1")
+				req.Header.Set("Authorization", "Basic shouldnotseeit")
+				req.Form = form
+				return req
+			}(),
 			path: "request",
 			want: map[string]interface{}{
 				"cgi_data": map[string]interface{}{
@@ -86,6 +85,10 @@ func TestHb2ReportsErrorContext(t *testing.T) {
 
 	for _, tt := range tests {
 		ctx := reporter.WithReporter(context.Background(), r)
+		for k, v := range tt.context {
+			ctx = errors.WithInfo(ctx, k, v)
+		}
+		ctx = errors.WithRequest(ctx, tt.request)
 		reporter.Report(ctx, tt.err)
 
 		select {

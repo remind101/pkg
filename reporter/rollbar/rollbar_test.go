@@ -11,6 +11,7 @@ import (
 
 	"context"
 
+	"github.com/remind101/pkg/httpx/errors"
 	"github.com/remind101/pkg/reporter"
 	"github.com/stvp/rollbar"
 )
@@ -29,25 +30,23 @@ func TestReportsThingsToRollbar(t *testing.T) {
 	}))
 	defer ts.Close()
 
+	form := url.Values{}
+	form.Add("param1", "param1value")
+	req, _ := http.NewRequest("GET", "/api/foo", nil)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Forwarded-For", "127.0.0.1")
+	req.Form = form
+
 	boom := fmt.Errorf("boom")
-	err := &reporter.Error{
-		Err:     boom,
-		Context: map[string]interface{}{"request_id": "1234"},
-		Request: func() *http.Request {
-			form := url.Values{}
-			form.Add("param1", "param1value")
-			req, _ := http.NewRequest("GET", "/api/foo", nil)
-			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("X-Forwarded-For", "127.0.0.1")
-			req.Form = form
-			return req
-		}(),
-	}
+	ctx := context.Background()
+	ctx = errors.WithInfo(ctx, "request_id", "1234")
+	ctx = errors.WithRequest(ctx, req)
+	err := errors.New(ctx, boom, 0)
 
 	ConfigureReporter("token", "test")
 	rollbar.Endpoint = ts.URL + "/"
 	fmt.Println(ts.URL)
-	ctx := reporter.WithReporter(context.Background(), Reporter)
+	ctx = reporter.WithReporter(ctx, Reporter)
 	reporter.Report(ctx, err)
 	rollbar.Wait()
 

@@ -5,8 +5,10 @@ import (
 	"log"
 	"testing"
 
-	"github.com/remind101/pkg/logger"
 	"context"
+
+	"github.com/pkg/errors"
+	"github.com/remind101/pkg/logger"
 )
 
 func TestLogReporter(t *testing.T) {
@@ -15,8 +17,7 @@ func TestLogReporter(t *testing.T) {
 		out string
 	}{
 		{errBoom, "request_id=1234  error=\"boom\" line=0 file=unknown\n"},
-		{&Error{Err: errBoom}, "request_id=1234  error=\"boom\" line=0 file=unknown\n"},
-		{NewError(errBoom, 0), "request_id=1234  error=\"boom\" line=19 file=logger_test.go\n"},
+		{errors.WithStack(errBoom), "request_id=1234  error=\"boom\" line=20 file=logger_test.go\n"},
 	}
 
 	for i, tt := range tests {
