@@ -5,9 +5,9 @@ package reporter
 import (
 	"strings"
 
-	"context"
+	"github.com/remind101/pkg/httpx/errors"
 
-	"github.com/remind101/pkg/errctx"
+	"context"
 )
 
 // DefaultLevel is the default level a Report uses when reporting an error.
@@ -62,14 +62,14 @@ func (e *MultiError) Error() string {
 // ReportWithLevel wraps the err as an Error and reports it the the Reporter embedded
 // within the context.Context.
 func ReportWithLevel(ctx context.Context, level string, err error) error {
-	e := errctx.New(ctx, err, 1)
+	e := errors.New(ctx, err, 1)
 	return reportWithLevel(ctx, level, e)
 }
 
 // Report wraps the err as an Error and reports it the the Reporter embedded
 // within the context.Context.
 func Report(ctx context.Context, err error) error {
-	e := errctx.New(ctx, err, 1)
+	e := errors.New(ctx, err, 1)
 	return reportWithLevel(ctx, DefaultLevel, e)
 }
 
@@ -91,7 +91,7 @@ func reportWithLevel(ctx context.Context, level string, err error) error {
 //     panic("oh noes") // will report, then crash.
 //   }(ctx)
 func Monitor(ctx context.Context) {
-	if err := errctx.Recover(ctx, recover()); err != nil {
+	if err := errors.Recover(ctx, recover()); err != nil {
 		Report(ctx, err)
 		panic(err)
 	}

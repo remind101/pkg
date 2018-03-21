@@ -5,8 +5,8 @@ import (
 
 	"context"
 
-	"github.com/remind101/pkg/errctx"
 	"github.com/remind101/pkg/httpx"
+	"github.com/remind101/pkg/httpx/errors"
 	"github.com/remind101/pkg/reporter"
 )
 
@@ -33,13 +33,13 @@ func (h *Recovery) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, 
 	ctx = reporter.WithReporter(ctx, h.Reporter)
 
 	// Add the request to the context.
-	ctx = errctx.WithRequest(ctx, r)
+	ctx = errors.WithRequest(ctx, r)
 
 	// Add the request id
-	ctx = errctx.WithInfo(ctx, "request_id", httpx.RequestID(ctx))
+	ctx = errors.WithInfo(ctx, "request_id", httpx.RequestID(ctx))
 
 	defer func() {
-		if e := errctx.Recover(ctx, recover()); e != nil {
+		if e := errors.Recover(ctx, recover()); e != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			err = e
 			reporter.Report(ctx, err)
@@ -60,7 +60,7 @@ type BasicRecovery struct {
 // panics and returns an error for upstream middleware to handle.
 func (h *BasicRecovery) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r *http.Request) (err error) {
 	defer func() {
-		if e := errctx.Recover(ctx, recover()); e != nil {
+		if e := errors.Recover(ctx, recover()); e != nil {
 			err = e
 		}
 	}()

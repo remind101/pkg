@@ -1,23 +1,23 @@
-// package errctx provides error handling primitives in a request context.
+// package errors provides error handling primitives in a request context.
 //
 // Adding request information
 //
 //     var ctx context.Context
 //     var req *http.Request
-//     ctx = errctx.WithRequest(ctx, req)
+//     ctx = errors.WithRequest(ctx, req)
 //
 // Adding contextual information
 //
-//     ctx = errctx.WithInfo(ctx, "X-Request-ID", "123")
+//     ctx = errors.WithInfo(ctx, "X-Request-ID", "123")
 //
 // Creating an error with context
 //
-//     e := errctx.New(ctx, err, 0)
+//     e := errors.New(ctx, err, 0)
 //     e.Err                              // err
 //     e.Request                          // *http.Request
 //     e.Context["X-Request-ID"].(string) // "123"
 //     e.StackTrace()                     // errors.StackTrace
-package errctx
+package errors
 
 import (
 	"context"

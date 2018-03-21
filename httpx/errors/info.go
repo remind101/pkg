@@ -1,4 +1,4 @@
-package errctx
+package errors
 
 import (
 	"context"

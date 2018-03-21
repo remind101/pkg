@@ -11,7 +11,7 @@ import (
 
 	"context"
 
-	"github.com/remind101/pkg/errctx"
+	"github.com/remind101/pkg/httpx/errors"
 	"github.com/remind101/pkg/reporter"
 	"github.com/stvp/rollbar"
 )
@@ -39,10 +39,9 @@ func TestReportsThingsToRollbar(t *testing.T) {
 
 	boom := fmt.Errorf("boom")
 	ctx := context.Background()
-	ctx = errctx.WithInfo(ctx, "request_id", "1234")
-	ctx = errctx.WithRequest(ctx, req)
-
-	err := errctx.New(ctx, boom, 0)
+	ctx = errors.WithInfo(ctx, "request_id", "1234")
+	ctx = errors.WithRequest(ctx, req)
+	err := errors.New(ctx, boom, 0)
 
 	ConfigureReporter("token", "test")
 	rollbar.Endpoint = ts.URL + "/"

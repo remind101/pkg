@@ -2,7 +2,7 @@ package hb2
 
 import (
 	"encoding/json"
-	"errors"
+	gerrors "errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -13,7 +13,7 @@ import (
 
 	"context"
 
-	"github.com/remind101/pkg/errctx"
+	"github.com/remind101/pkg/httpx/errors"
 	"github.com/remind101/pkg/reporter"
 )
 
@@ -27,7 +27,7 @@ func TestHb2ReportsErrorContext(t *testing.T) {
 	defer ts.Close()
 	r := NewReporter(Config{Endpoint: ts.URL})
 
-	boom := errors.New("The Error")
+	boom := gerrors.New("The Error")
 	tests := []struct {
 		name    string
 		err     error
@@ -86,9 +86,9 @@ func TestHb2ReportsErrorContext(t *testing.T) {
 	for _, tt := range tests {
 		ctx := reporter.WithReporter(context.Background(), r)
 		for k, v := range tt.context {
-			ctx = errctx.WithInfo(ctx, k, v)
+			ctx = errors.WithInfo(ctx, k, v)
 		}
-		ctx = errctx.WithRequest(ctx, tt.request)
+		ctx = errors.WithRequest(ctx, tt.request)
 		reporter.Report(ctx, tt.err)
 
 		select {

@@ -1,21 +1,21 @@
 package reporter
 
 import (
-	"errors"
+	gerrors "errors"
 	"fmt"
 	"net/http"
 	"testing"
 
 	"context"
 
-	"github.com/remind101/pkg/errctx"
+	"github.com/remind101/pkg/httpx/errors"
 )
 
-var errBoom = errors.New("boom")
+var errBoom = gerrors.New("boom")
 
 func TestReport(t *testing.T) {
 	r := ReporterFunc(func(ctx context.Context, level string, err error) error {
-		e := err.(*errctx.Error)
+		e := err.(*errors.Error)
 
 		if e.Request().Header.Get("Content-Type") != "application/json" {
 			t.Fatal("request information not set")
@@ -37,7 +37,7 @@ func TestReport(t *testing.T) {
 
 	req, _ := http.NewRequest("GET", "/", nil)
 	req.Header.Set("Content-Type", "application/json")
-	ctx = errctx.WithRequest(ctx, req)
+	ctx = errors.WithRequest(ctx, req)
 
 	if err := ReportWithLevel(ctx, "error", errBoom); err != nil {
 		t.Fatal(err)

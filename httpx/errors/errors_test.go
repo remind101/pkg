@@ -1,25 +1,25 @@
-package errctx_test
+package errors_test
 
 import (
 	"context"
-	"errors"
+	gerrors "errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"reflect"
 	"testing"
 
-	"github.com/remind101/pkg/errctx"
+	"github.com/remind101/pkg/httpx/errors"
 )
 
-var errBoom = errors.New("boom")
+var errBoom = gerrors.New("boom")
 
 func TestNew(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/", nil)
 	req.Header.Set("Content-Type", "application/json")
-	ctx := errctx.WithRequest(context.Background(), req)
-	ctx = errctx.WithInfo(ctx, "foo", "bar")
-	e := errctx.New(ctx, errBoom, 0)
+	ctx := errors.WithRequest(context.Background(), req)
+	ctx = errors.WithInfo(ctx, "foo", "bar")
+	e := errors.New(ctx, errBoom, 0)
 	r := e.Request()
 
 	if r.Header.Get("Content-Type") != "application/json" {
@@ -46,8 +46,8 @@ func TestWithSensitiveData(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "this-is-a-secret")
 	req.Header.Set("Cookie", "r101_auth_token=this-is-sensitive")
-	ctx := errctx.WithRequest(context.Background(), req)
-	e := errctx.New(ctx, errBoom, 0)
+	ctx := errors.WithRequest(context.Background(), req)
+	e := errors.New(ctx, errBoom, 0)
 	r := e.Request()
 
 	if r.URL.Scheme != "http" {
@@ -90,8 +90,8 @@ func TestWithFormData(t *testing.T) {
 	req.Form.Add("key", "foo")
 	req.Form.Add("username", "admin")
 	req.Form.Add("password", "this-is-a-secret")
-	ctx := errctx.WithRequest(context.Background(), req)
-	e := errctx.New(ctx, errBoom, 0)
+	ctx := errors.WithRequest(context.Background(), req)
+	e := errors.New(ctx, errBoom, 0)
 	r := e.Request()
 
 	if r.Form.Get("key") != "foo" {
@@ -124,28 +124,14 @@ func TestPanics(t *testing.T) {
 		},
 		{
 			Fn: func() {
-				panic(nil)
-			},
-			TestFn: func(err error) {
-				if err == nil {
-					t.Error("expected err to not be nil")
-				}
-				e := err.(*errctx.Error)
-				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errctx_test.go:127"; got != want {
-					t.Errorf("got: %v; expected: %v", got, want)
-				}
-			},
-		},
-		{
-			Fn: func() {
 				panic("boom!")
 			},
 			TestFn: func(err error) {
 				if err == nil {
 					t.Error("expected err to not be nil")
 				}
-				e := err.(*errctx.Error)
-				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errctx_test.go:141"; got != want {
+				e := err.(*errors.Error)
+				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errors_test.go:127"; got != want {
 					t.Errorf("got: %v; expected: %v", got, want)
 				}
 			},
@@ -158,22 +144,22 @@ func TestPanics(t *testing.T) {
 				if err == nil {
 					t.Error("expected err to not be nil")
 				}
-				e := err.(*errctx.Error)
-				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errctx_test.go:155"; got != want {
+				e := err.(*errors.Error)
+				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errors_test.go:141"; got != want {
 					t.Errorf("got: %v; expected: %v", got, want)
 				}
 			},
 		},
 		{
 			Fn: func() {
-				panic(errctx.New(context.Background(), errors.New("boom"), 0))
+				panic(errors.New(context.Background(), gerrors.New("boom"), 0))
 			},
 			TestFn: func(err error) {
 				if err == nil {
 					t.Error("expected err to not be nil")
 				}
-				e := err.(*errctx.Error)
-				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errctx_test.go:169"; got != want {
+				e := err.(*errors.Error)
+				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errors_test.go:155"; got != want {
 					t.Errorf("got: %v; expected: %v", got, want)
 				}
 			},
@@ -186,7 +172,7 @@ func TestPanics(t *testing.T) {
 
 func runPanicTest(pt panicTest) {
 	defer func() {
-		err := errctx.Recover(context.Background(), recover())
+		err := errors.Recover(context.Background(), recover())
 		pt.TestFn(err)
 	}()
 
