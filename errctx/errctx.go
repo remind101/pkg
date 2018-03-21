@@ -1,3 +1,22 @@
+// package errctx provides error handling primitives in a request context.
+//
+// Adding request information
+//
+//     var ctx context.Context
+//     var req *http.Request
+//     ctx = errctx.WithRequest(ctx, req)
+//
+// Adding contextual information
+//
+//     ctx = errctx.WithInfo(ctx, "X-Request-ID", "123")
+//
+// Creating an error with context
+//
+//     e := errctx.New(ctx, err, 0)
+//     e.Err                              // err
+//     e.Request                          // *http.Request
+//     e.Context["X-Request-ID"].(string) // "123"
+//     e.StackTrace()                     // errors.StackTrace
 package errctx
 
 import (
@@ -8,14 +27,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-// DefaultMax is the default maximum number of lines to show from the stack trace.
-var DefaultMax = 1024
+// MaxFrames is the default maximum number of lines to show from the stack trace.
+var MaxFrames = 1024
 
 // WithInfo adds contextual information to the info object in the context.
 func WithInfo(ctx context.Context, key string, value interface{}) context.Context {
 	ctx = withInfo(ctx)
 	i, _ := infoFromContext(ctx)
-	i.context[key] = value
+	i.data[key] = value
 	return ctx
 }
 
@@ -32,8 +51,6 @@ func Recover(ctx context.Context, v interface{}) (e error) {
 	switch err := v.(type) {
 	case nil:
 		e = nil
-	case stackTracer:
-		e = err.(error)
 	case error:
 		e = New(ctx, err, 0)
 	default:
@@ -50,10 +67,10 @@ type Error struct {
 	Err error
 
 	// Any freeform contextual information about that error.
-	Context map[string]interface{}
+	info map[string]interface{}
 
 	// If provided, an http request that generated the error.
-	Request *http.Request
+	request *http.Request
 
 	// This is private so that it can be exposed via StackTrace(),
 	// which implements the stackTracker interface.
@@ -75,7 +92,7 @@ func new(err error, skip int) *Error {
 	return &Error{
 		Err:        err,
 		stackTrace: stacktrace(err, skip+1),
-		Context:    map[string]interface{}{},
+		info:       map[string]interface{}{},
 	}
 }
 
@@ -94,11 +111,21 @@ func (e *Error) StackTrace() errors.StackTrace {
 	return e.stackTrace
 }
 
+// Request returns the request object associated with this error.
+func (e *Error) Request() *http.Request {
+	return e.request
+}
+
+// ContextData() returns contextual information associated with this error.
+func (e *Error) ContextData() map[string]interface{} {
+	return e.info
+}
+
 // WithContext returns a new Error with contextual information added.
 func (e *Error) WithContext(ctx context.Context) *Error {
 	if i, ok := infoFromContext(ctx); ok {
-		e.Context = i.context
-		e.Request = i.request
+		e.info = i.data
+		e.request = i.request
 	}
 	return e
 }
@@ -167,8 +194,8 @@ func stacktrace(err error, skip int) errors.StackTrace {
 	if stack == nil {
 		stack = genStacktrace(err, skip+1)
 	}
-	if len(stack) > DefaultMax {
-		stack = stack[:DefaultMax]
+	if len(stack) > MaxFrames {
+		stack = stack[:MaxFrames]
 	}
 	return stack
 }

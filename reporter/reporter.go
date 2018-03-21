@@ -13,9 +13,6 @@ import (
 // DefaultLevel is the default level a Report uses when reporting an error.
 const DefaultLevel = "error"
 
-// DefaultMax is the default maximum number of lines to show from the stack trace.
-var DefaultMax = 1024
-
 // Reporter represents an error handler.
 type Reporter interface {
 	// Report reports the error to an external system. The provided error

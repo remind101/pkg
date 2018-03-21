@@ -20,12 +20,13 @@ func TestNew(t *testing.T) {
 	ctx := errctx.WithRequest(context.Background(), req)
 	ctx = errctx.WithInfo(ctx, "foo", "bar")
 	e := errctx.New(ctx, errBoom, 0)
+	r := e.Request()
 
-	if e.Request.Header.Get("Content-Type") != "application/json" {
+	if r.Header.Get("Content-Type") != "application/json" {
 		t.Fatal("request information not set")
 	}
 
-	if v := e.Context["foo"]; !reflect.DeepEqual(v, "bar") {
+	if v := e.ContextData()["foo"]; !reflect.DeepEqual(v, "bar") {
 		t.Fatal("expected contextual information to be set")
 	}
 
@@ -47,36 +48,37 @@ func TestWithSensitiveData(t *testing.T) {
 	req.Header.Set("Cookie", "r101_auth_token=this-is-sensitive")
 	ctx := errctx.WithRequest(context.Background(), req)
 	e := errctx.New(ctx, errBoom, 0)
+	r := e.Request()
 
-	if e.Request.URL.Scheme != "http" {
-		t.Fatalf("expected request.URL.Scheme to be \"http\", got: %v", e.Request.URL.Scheme)
+	if r.URL.Scheme != "http" {
+		t.Fatalf("expected request.URL.Scheme to be \"http\", got: %v", r.URL.Scheme)
 	}
 
-	if e.Request.URL.User != nil {
+	if r.URL.User != nil {
 		t.Fatal("expected request.User to have been removed by the reporter")
 	}
 
-	if e.Request.URL.Host != "remind.com:80" {
-		t.Fatalf("expected request.URL.Host to be \"remind.com:80\", got: %v", e.Request.URL.Host)
+	if r.URL.Host != "remind.com:80" {
+		t.Fatalf("expected request.URL.Host to be \"remind.com:80\", got: %v", r.URL.Host)
 	}
 
-	if e.Request.URL.Path != "/docs" {
-		t.Fatalf("expected request.URL.Host to be \"/docs\", got: %v", e.Request.URL.Path)
+	if r.URL.Path != "/docs" {
+		t.Fatalf("expected request.URL.Host to be \"/docs\", got: %v", r.URL.Path)
 	}
 
-	if e.Request.Header.Get("Content-Type") != "application/json" {
-		t.Fatalf("expected request.Header[\"Content-type\"] to be \"application/json\", got: %v", e.Request.Header.Get("Content-Type"))
+	if r.Header.Get("Content-Type") != "application/json" {
+		t.Fatalf("expected request.Header[\"Content-type\"] to be \"application/json\", got: %v", r.Header.Get("Content-Type"))
 	}
 
-	if e.Request.Header.Get("Authorization") != "" {
+	if r.Header.Get("Authorization") != "" {
 		t.Fatal("expected request.headers.Authorization to have been removed by the reporter")
 	}
 
-	if e.Request.Header.Get("Cookie") != "" {
+	if r.Header.Get("Cookie") != "" {
 		t.Fatal("expected request.headers.Cookie to have been removed by the reporter")
 	}
 
-	if len(e.Request.Cookies()) != 0 {
+	if len(r.Cookies()) != 0 {
 		t.Fatal("expected request.Cookies to have been removed by the reporter")
 	}
 }
@@ -90,16 +92,17 @@ func TestWithFormData(t *testing.T) {
 	req.Form.Add("password", "this-is-a-secret")
 	ctx := errctx.WithRequest(context.Background(), req)
 	e := errctx.New(ctx, errBoom, 0)
+	r := e.Request()
 
-	if e.Request.Form.Get("key") != "foo" {
-		t.Fatalf("expected request.Form[\"key\"] to be \"foo\", got: %v", e.Request.Form.Get("key"))
+	if r.Form.Get("key") != "foo" {
+		t.Fatalf("expected request.Form[\"key\"] to be \"foo\", got: %v", r.Form.Get("key"))
 	}
 
-	if e.Request.Form.Get("username") != "admin" {
-		t.Fatalf("expected request.Form[\"username\"] to be \"admin\", got: %v", e.Request.Form.Get("username"))
+	if r.Form.Get("username") != "admin" {
+		t.Fatalf("expected request.Form[\"username\"] to be \"admin\", got: %v", r.Form.Get("username"))
 	}
 
-	if e.Request.Form.Get("password") != "" {
+	if r.Form.Get("password") != "" {
 		t.Fatal("expected request.Form[\"password\"] to have been removed by the reporter")
 	}
 }
@@ -121,6 +124,20 @@ func TestPanics(t *testing.T) {
 		},
 		{
 			Fn: func() {
+				panic(nil)
+			},
+			TestFn: func(err error) {
+				if err == nil {
+					t.Error("expected err to not be nil")
+				}
+				e := err.(*errctx.Error)
+				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errctx_test.go:127"; got != want {
+					t.Errorf("got: %v; expected: %v", got, want)
+				}
+			},
+		},
+		{
+			Fn: func() {
 				panic("boom!")
 			},
 			TestFn: func(err error) {
@@ -128,7 +145,7 @@ func TestPanics(t *testing.T) {
 					t.Error("expected err to not be nil")
 				}
 				e := err.(*errctx.Error)
-				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errctx_test.go:124"; got != want {
+				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errctx_test.go:141"; got != want {
 					t.Errorf("got: %v; expected: %v", got, want)
 				}
 			},
@@ -142,7 +159,7 @@ func TestPanics(t *testing.T) {
 					t.Error("expected err to not be nil")
 				}
 				e := err.(*errctx.Error)
-				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errctx_test.go:138"; got != want {
+				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errctx_test.go:155"; got != want {
 					t.Errorf("got: %v; expected: %v", got, want)
 				}
 			},
@@ -156,7 +173,7 @@ func TestPanics(t *testing.T) {
 					t.Error("expected err to not be nil")
 				}
 				e := err.(*errctx.Error)
-				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errctx_test.go:152"; got != want {
+				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errctx_test.go:169"; got != want {
 					t.Errorf("got: %v; expected: %v", got, want)
 				}
 			},

@@ -5,16 +5,14 @@ import (
 	"net/http"
 )
 
-// info is used internally to store contextual information. Any empty info
-// gets inserted into the context.Context when the Reporter is inserted, which
-// allows downstream consumers to add additional information to this object.
+// info is used internally to store contextual information.
 type info struct {
-	context map[string]interface{}
+	data    map[string]interface{}
 	request *http.Request
 }
 
 func newInfo() *info {
-	return &info{context: make(map[string]interface{})}
+	return &info{data: make(map[string]interface{})}
 }
 
 func withInfo(ctx context.Context) context.Context {

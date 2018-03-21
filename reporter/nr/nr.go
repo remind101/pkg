@@ -7,7 +7,6 @@ import (
 	"context"
 
 	"github.com/remind101/newrelic"
-	"github.com/remind101/pkg/errctx"
 	"github.com/remind101/pkg/reporter"
 	"github.com/remind101/pkg/reporter/util"
 )
@@ -34,13 +33,15 @@ func (r *Reporter) ReportWithLevel(ctx context.Context, level string, err error)
 		stackFrameDelim = "\n"
 		stackTrace = make([]string, 0)
 
-		if e, ok := err.(*errctx.Error); ok {
-			exceptionType = util.ClassName(e.Err)
+		exceptionType = util.ClassName(err)
+		if e, ok := err.(util.Causer); ok {
+			exceptionType = util.ClassName(e.Cause())
+		}
 
+		if e, ok := err.(util.StackTracer); ok {
 			for _, frame := range e.StackTrace() {
 				stackTrace = append(stackTrace, fmt.Sprintf("%s:%d %n", frame, frame, frame))
 			}
-
 		}
 
 		return tx.ReportError(exceptionType, errorMessage, strings.Join(stackTrace, stackFrameDelim), stackFrameDelim)

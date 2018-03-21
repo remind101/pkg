@@ -17,7 +17,7 @@ func TestReport(t *testing.T) {
 	r := ReporterFunc(func(ctx context.Context, level string, err error) error {
 		e := err.(*errctx.Error)
 
-		if e.Request.Header.Get("Content-Type") != "application/json" {
+		if e.Request().Header.Get("Content-Type") != "application/json" {
 			t.Fatal("request information not set")
 		}
 

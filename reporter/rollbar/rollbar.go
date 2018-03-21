@@ -8,7 +8,7 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
-	"github.com/remind101/pkg/errctx"
+	"github.com/remind101/pkg/reporter/util"
 	"github.com/stvp/rollbar"
 )
 
@@ -31,14 +31,19 @@ func (r *rollbarReporter) ReportWithLevel(ctx context.Context, level string, err
 	extraFields := []*rollbar.Field{}
 	var stackTrace rollbar.Stack = nil
 
-	if e, ok := err.(*errctx.Error); ok {
+	if e, ok := err.(util.Contexter); ok {
 		extraFields = getContextData(e)
+	}
 
-		if r := e.Request; r != nil {
-			request = e.Request
-		}
+	if e, ok := err.(util.Requester); ok {
+		request = e.Request()
+	}
 
+	if e, ok := err.(util.StackTracer); ok {
 		stackTrace = makeRollbarStack(e.StackTrace())
+	}
+
+	if e, ok := err.(util.Causer); ok {
 		err = e.Cause() // Report the actual cause of the error.
 	}
 
@@ -82,9 +87,9 @@ func parseInt(s string) int {
 	return i
 }
 
-func getContextData(err *errctx.Error) []*rollbar.Field {
+func getContextData(err util.Contexter) []*rollbar.Field {
 	fields := []*rollbar.Field{}
-	for key, value := range err.Context {
+	for key, value := range err.ContextData() {
 		fields = append(fields, &rollbar.Field{key, value})
 	}
 	return fields

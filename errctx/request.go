@@ -6,6 +6,10 @@ import (
 )
 
 func safeCloneRequest(req *http.Request) *http.Request {
+	if req == nil {
+		return nil
+	}
+
 	return &http.Request{
 		Method:     req.Method,
 		URL:        safeCloneURL(req.URL),
