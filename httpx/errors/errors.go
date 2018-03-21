@@ -13,10 +13,10 @@
 // Creating an error with context
 //
 //     e := errors.New(ctx, err, 0)
-//     e.Err                              // err
-//     e.Request                          // *http.Request
-//     e.Context["X-Request-ID"].(string) // "123"
-//     e.StackTrace()                     // errors.StackTrace
+//     e.Err                                    // err
+//     e.Request()                              // *http.Request
+//     e.ContextData()["X-Request-ID"].(string) // "123"
+//     e.StackTrace()                           // errors.StackTrace
 package errors
 
 import (
