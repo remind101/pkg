@@ -152,14 +152,20 @@ func TestPanics(t *testing.T) {
 		},
 		{
 			Fn: func() {
-				panic(errors.New(context.Background(), gerrors.New("boom"), 0))
+				ctx := context.Background()
+				ctx = errors.WithInfo(ctx, "request_id", "1234")
+				panic(errors.New(ctx, gerrors.New("boom"), 0))
 			},
 			TestFn: func(err error) {
 				if err == nil {
 					t.Error("expected err to not be nil")
 				}
 				e := err.(*errors.Error)
-				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errors_test.go:155"; got != want {
+				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errors_test.go:157"; got != want {
+					t.Errorf("got: %v; expected: %v", got, want)
+				}
+
+				if got, want := e.ContextData()["request_id"], "1234"; got != want {
 					t.Errorf("got: %v; expected: %v", got, want)
 				}
 			},
