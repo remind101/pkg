@@ -1,38 +1,47 @@
 package svc_test
 
 import (
-	"bytes"
 	"context"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/remind101/pkg/httpx"
-	"github.com/remind101/pkg/logger"
-	"github.com/remind101/pkg/reporter"
+	"github.com/remind101/pkg/httpx/middleware"
+	"github.com/remind101/pkg/reporter/mock"
 	"github.com/remind101/pkg/svc"
 )
 
 func TestStandardHandler(t *testing.T) {
-	buf := logToBuffer()
-	rep := reporter.NewLogReporter()
+	rep := mock.NewReporter()
 	r := httpx.NewRouter()
+
 	r.Handle("/panic", httpx.HandlerFunc(func(ctx context.Context, rw http.ResponseWriter, r *http.Request) error {
 		panic("I panicked")
 	}))
+
+	r.Handle("/timeout", httpx.HandlerFunc(func(ctx context.Context, rw http.ResponseWriter, r *http.Request) error {
+		time.Sleep(100 * time.Millisecond)
+		return nil
+	}))
+
 	h := svc.NewStandardHandler(svc.HandlerOpts{
-		Router:   r,
-		Reporter: rep,
+		Router:         r,
+		Reporter:       rep,
+		ErrorHandler:   middleware.JSONReportingErrorHandler,
+		HandlerTimeout: 500 * time.Millisecond,
 	})
+
 	s := httptest.NewServer(h)
 	defer s.Close()
 
+	// Test Panic
 	req, _ := http.NewRequest("GET", s.URL+"/panic", nil)
 	req.Header.Add("X-Request-ID", "abc")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	if got, want := resp.StatusCode, 500; got != want {
@@ -42,12 +51,4 @@ func TestStandardHandler(t *testing.T) {
 	if got, want := buf.String(), " request_id=abc error=\"I panicked\" line=22 file=svc_test.go\n"; got != want {
 		t.Errorf("got %s; expected %s", got, want)
 	}
-}
-
-func logToBuffer() *bytes.Buffer {
-	lvl := logger.ERROR
-	var buf bytes.Buffer
-	l := logger.New(log.New(&buf, "", 0), lvl)
-	logger.DefaultLogger = l
-	return &buf
 }
