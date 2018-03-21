@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/remind101/pkg/httpx"
+	"github.com/remind101/pkg/httpx/errors"
 )
 
 // TimeoutHandler returns a Handler that runs h with the given time limit.
@@ -62,7 +63,7 @@ func (h *timeoutHandler) ServeHTTPContext(ctx context.Context, w http.ResponseWr
 	panicChan := make(chan interface{}, 1)
 	go func() {
 		defer func() {
-			if p := recover(); p != nil {
+			if p := errors.Recover(ctx, recover()); p != nil {
 				panicChan <- p
 			}
 		}()
@@ -88,7 +89,7 @@ func (h *timeoutHandler) ServeHTTPContext(ctx context.Context, w http.ResponseWr
 		tw.mu.Lock()
 		defer tw.mu.Unlock()
 		tw.timedOut = true
-		err = ErrHandlerTimeout
+		err = errors.New(ctx, ErrHandlerTimeout, 0)
 	}
 	return err
 }

@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"testing"
 	"time"
 
@@ -75,11 +74,24 @@ func TestTimeoutHandler(t *testing.T) {
 	}
 }
 
+func compareError(t *testing.T, got, want interface{}) {
+	t.Helper()
+	if got == nil && want != nil || got != nil && want == nil {
+		t.Errorf("got: %#v; expected %#v", got, want)
+	}
+	if got == nil && want == nil {
+		return
+	}
+
+	if g, w := got.(error).Error(), want.(error).Error(); g != w {
+		t.Errorf("got: %#v; expected %#v", g, w)
+	}
+}
+
 func runTimeoutTest(tt timeoutTest, t *testing.T) {
 	defer func() {
-		if got, want := recover(), tt.Panic; !reflect.DeepEqual(got, want) {
-			t.Errorf("got: %#v; expected %#v", got, want)
-		}
+		v := recover()
+		compareError(t, v, tt.Panic)
 	}()
 	th := TimeoutHandler(tt.Handler, tt.Duration)
 	ctx := context.Background()
@@ -87,9 +99,7 @@ func runTimeoutTest(tt timeoutTest, t *testing.T) {
 	resp := httptest.NewRecorder()
 	err := th.ServeHTTPContext(ctx, resp, req)
 
-	if got, want := err, tt.Err; !reflect.DeepEqual(got, want) {
-		t.Errorf("got: %#v; expected %#v", got, want)
-	}
+	compareError(t, err, tt.Err)
 
 	if tt.Code > 0 {
 		if got, want := resp.Result().StatusCode, tt.Code; got != want {
