@@ -50,14 +50,13 @@ type timeoutHandler struct {
 	dt      time.Duration
 }
 
-func (h *timeoutHandler) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r *http.Request) (err error) {
+func (h *timeoutHandler) ServeHTTPContext(ctx context.Context, rw http.ResponseWriter, r *http.Request) (err error) {
 	ctx, cancelCtx := context.WithTimeout(ctx, h.dt)
 	defer cancelCtx()
 
 	r = r.WithContext(ctx)
 	done := make(chan struct{})
 	tw := &timeoutWriter{
-		w: w,
 		h: make(http.Header),
 	}
 	panicChan := make(chan interface{}, 1)
@@ -70,21 +69,30 @@ func (h *timeoutHandler) ServeHTTPContext(ctx context.Context, w http.ResponseWr
 		err = h.handler.ServeHTTPContext(ctx, tw, r)
 		close(done)
 	}()
+
 	select {
 	case p := <-panicChan:
 		panic(p)
 	case <-done:
 		tw.mu.Lock()
 		defer tw.mu.Unlock()
-		dst := w.Header()
-		for k, vv := range tw.h {
-			dst[k] = vv
+
+		// If timeout writer was written to by request handler, we write the buffered
+		// response to the response writer.
+		//
+		// It is possible that the handler merely returned an error in which case
+		// a middleware may write a response, so we must not always write one here.
+		if tw.modified {
+			dst := rw.Header()
+			for k, vv := range tw.h {
+				dst[k] = vv
+			}
+			if !tw.wroteHeader {
+				tw.code = http.StatusOK
+			}
+			rw.WriteHeader(tw.code)
+			rw.Write(tw.wbuf.Bytes())
 		}
-		if !tw.wroteHeader {
-			tw.code = http.StatusOK
-		}
-		w.WriteHeader(tw.code)
-		w.Write(tw.wbuf.Bytes())
 	case <-ctx.Done():
 		tw.mu.Lock()
 		defer tw.mu.Unlock()
@@ -95,17 +103,20 @@ func (h *timeoutHandler) ServeHTTPContext(ctx context.Context, w http.ResponseWr
 }
 
 type timeoutWriter struct {
-	w    http.ResponseWriter
 	h    http.Header
 	wbuf bytes.Buffer
 
 	mu          sync.Mutex
 	timedOut    bool
 	wroteHeader bool
+	modified    bool
 	code        int
 }
 
-func (tw *timeoutWriter) Header() http.Header { return tw.h }
+func (tw *timeoutWriter) Header() http.Header {
+	tw.modified = true
+	return tw.h
+}
 
 func (tw *timeoutWriter) Write(p []byte) (int, error) {
 	tw.mu.Lock()
@@ -116,15 +127,18 @@ func (tw *timeoutWriter) Write(p []byte) (int, error) {
 	if !tw.wroteHeader {
 		tw.writeHeader(http.StatusOK)
 	}
+	tw.modified = true
 	return tw.wbuf.Write(p)
 }
 
 func (tw *timeoutWriter) WriteHeader(code int) {
 	tw.mu.Lock()
 	defer tw.mu.Unlock()
+
 	if tw.timedOut || tw.wroteHeader {
 		return
 	}
+	tw.modified = true
 	tw.writeHeader(code)
 }
 
