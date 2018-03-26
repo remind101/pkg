@@ -82,7 +82,7 @@ func (h *timeoutHandler) ServeHTTPContext(ctx context.Context, rw http.ResponseW
 		//
 		// It is possible that the handler merely returned an error in which case
 		// a middleware may write a response, so we must not always write one here.
-		if tw.modified {
+		if tw.modified || len(tw.Header()) > 0 {
 			dst := rw.Header()
 			for k, vv := range tw.h {
 				dst[k] = vv
@@ -114,7 +114,6 @@ type timeoutWriter struct {
 }
 
 func (tw *timeoutWriter) Header() http.Header {
-	tw.modified = true
 	return tw.h
 }
 
