@@ -165,6 +165,12 @@ func InitAll() Env {
 	r := InitReporter()
 
 	ctx := reporter.WithReporter(context.Background(), r)
+	ctx = logger.WithLogger(ctx, l)
+
+	go func() {
+		defer reporter.Monitor(ctx)
+		metrics.Runtime()
+	}()
 
 	return Env{
 		Logger:   l,
