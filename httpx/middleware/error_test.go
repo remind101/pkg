@@ -82,8 +82,8 @@ func TestErrorMiddleware(t *testing.T) {
 		resp := httptest.NewRecorder()
 		ctx := reporter.WithReporter(context.Background(), reporter.NewLogReporter())
 		err := h.ServeHTTPContext(ctx, resp, req)
-		if err != nil {
-			t.Fatal("Expected no error to be returned because it was handled")
+		if err != tt.Error {
+			t.Fatal("Expected error to be returned")
 		}
 
 		if got, want := resp.Body.String(), tt.Body; got != want {
