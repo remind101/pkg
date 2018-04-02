@@ -5,8 +5,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/remind101/pkg/httpx"
 	"context"
+
+	"github.com/remind101/pkg/httpx"
 )
 
 func TestRequestID(t *testing.T) {
@@ -23,7 +24,12 @@ func TestRequestID(t *testing.T) {
 		m := &RequestID{
 			handler: httpx.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 				requestID := httpx.RequestID(ctx)
+				if got, want := requestID, tt.id; got != want {
+					t.Fatalf("RequestID => %s; want %s", got, want)
+				}
 
+				// From request.Context()
+				requestID = httpx.RequestID(r.Context())
 				if got, want := requestID, tt.id; got != want {
 					t.Fatalf("RequestID => %s; want %s", got, want)
 				}

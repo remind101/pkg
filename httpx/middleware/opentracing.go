@@ -45,6 +45,7 @@ func (h *OpentracingTracer) ServeHTTPContext(ctx context.Context, w http.Respons
 
 	defer span.Finish()
 	ctx = opentracing.ContextWithSpan(ctx, span)
+	r = r.WithContext(ctx)
 
 	rw := NewResponseWriter(w)
 	reqErr := h.handler.ServeHTTPContext(ctx, rw, r)

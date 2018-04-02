@@ -28,6 +28,8 @@ func (h *Header) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r 
 	value := e(r)
 
 	ctx = httpx.WithHeader(ctx, h.key, value)
+	r = r.WithContext(ctx)
+
 	return h.handler.ServeHTTPContext(ctx, w, r)
 }
 

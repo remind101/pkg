@@ -43,7 +43,10 @@ func LogTo(h httpx.Handler, g loggerGenerator) httpx.Handler {
 func InsertLogger(h httpx.Handler, g loggerGenerator) httpx.Handler {
 	return httpx.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 		l := g(ctx, r)
+
 		ctx = logger.WithLogger(ctx, l)
+		r = r.WithContext(ctx)
+
 		return h.ServeHTTPContext(ctx, w, r)
 	})
 }

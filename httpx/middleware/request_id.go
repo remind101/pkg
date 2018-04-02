@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"context"
+
 	"github.com/remind101/pkg/httpx"
 )
 
@@ -39,5 +40,7 @@ func (h *RequestID) ServeHTTPContext(ctx context.Context, w http.ResponseWriter,
 	requestID := e(r)
 
 	ctx = httpx.WithRequestID(ctx, requestID)
+	r = r.WithContext(ctx)
+
 	return h.handler.ServeHTTPContext(ctx, w, r)
 }

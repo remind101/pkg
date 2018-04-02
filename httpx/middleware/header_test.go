@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"context"
+
 	"github.com/remind101/pkg/httpx"
 )
 
@@ -24,7 +25,11 @@ func TestHeader(t *testing.T) {
 		m := ExtractHeader(
 			httpx.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 				data := httpx.Header(ctx, tt.key)
+				if got, want := data, tt.val; got != want {
+					t.Fatalf("%s => %s; want %s", tt.key, got, want)
+				}
 
+				data = httpx.Header(r.Context(), tt.key)
 				if got, want := data, tt.val; got != want {
 					t.Fatalf("%s => %s; want %s", tt.key, got, want)
 				}
