@@ -67,10 +67,6 @@ func NewStandardHandler(opts HandlerOpts) http.Handler {
 	// later middleware expects endpoint panics to be returned as an error.
 	h = middleware.BasicRecover(h)
 
-	// Add request tracing. Must go before the HandleError middleware in order
-	// to capture any errors from the endpoint handler.
-	h = middleware.OpentracingTracing(h, opts.Router)
-
 	// Handler errors returned by endpoint handler or recovery middleware.
 	// Errors will no longer be returned after this middeware.
 	errorHandler := opts.ErrorHandler
@@ -78,6 +74,10 @@ func NewStandardHandler(opts HandlerOpts) http.Handler {
 		errorHandler = middleware.ReportingErrorHandler
 	}
 	h = middleware.HandleError(h, errorHandler)
+
+	// Add request tracing. Must go after the HandleError middleware in order
+	// to capture the status code written to the response.
+	h = middleware.OpentracingTracing(h, opts.Router)
 
 	// Insert logger into context and log requests at INFO level.
 	h = middleware.LogTo(h, middleware.LoggerWithRequestID)

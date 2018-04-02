@@ -107,5 +107,6 @@ func (h *Error) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r *
 		f(ctx, err, w, r)
 	}
 
-	return nil
+	// Pass the error up for any other middleware to use.
+	return err
 }
