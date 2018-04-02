@@ -1,29 +1,15 @@
 package middleware
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"context"
 
-	"github.com/pkg/errors"
 	"github.com/remind101/pkg/httpx"
 	"github.com/remind101/pkg/reporter"
 )
 
 type ErrorHandlerFunc func(context.Context, error, http.ResponseWriter, *http.Request)
-
-type temporaryError interface {
-	Temporary() bool // Is the error temporary?
-}
-
-type timeoutError interface {
-	Timeout() bool // Is the error a timeout?
-}
-
-type statusCoder interface {
-	StatusCode() int
-}
 
 // DefaultErrorHandler is an error handler that will respond with the error
 // message and a 500 status.
@@ -38,37 +24,10 @@ var ReportingErrorHandler = func(ctx context.Context, err error, w http.Response
 	writeError(w, err)
 }
 
-var JSONReportingErrorHandler = func(ctx context.Context, err error, w http.ResponseWriter, r *http.Request) {
-	reporter.Report(ctx, err)
-	status := statusCodeForError(err)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-
-	errorResp := map[string]string{
-		"error": err.Error(),
-	}
-
-	json.NewEncoder(w).Encode(errorResp)
-}
+var JSONReportingErrorHandler = httpx.Error
 
 func writeError(w http.ResponseWriter, err error) {
-	http.Error(w, err.Error(), statusCodeForError(err))
-}
-
-func statusCodeForError(err error) int {
-	rootErr := errors.Cause(err)
-	if e, ok := rootErr.(statusCoder); ok {
-		return e.StatusCode()
-	}
-	if e, ok := rootErr.(temporaryError); ok && e.Temporary() {
-		return http.StatusServiceUnavailable
-	}
-
-	if e, ok := rootErr.(timeoutError); ok && e.Timeout() {
-		return http.StatusServiceUnavailable
-	}
-
-	return http.StatusInternalServerError
+	http.Error(w, err.Error(), httpx.ErrorStatusCode(err))
 }
 
 // Error is an httpx.Handler that will handle errors with an ErrorHandler.
