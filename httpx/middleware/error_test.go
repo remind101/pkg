@@ -13,13 +13,14 @@ import (
 
 func TestErrorWithHandler(t *testing.T) {
 	var called bool
+	boomErr := errors.New("boom")
 
 	h := &Error{
 		ErrorHandler: func(ctx context.Context, err error, w http.ResponseWriter, r *http.Request) {
 			called = true
 		},
 		handler: httpx.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-			return errors.New("boom")
+			return boomErr
 		}),
 	}
 
@@ -28,7 +29,7 @@ func TestErrorWithHandler(t *testing.T) {
 	resp := httptest.NewRecorder()
 
 	err := h.ServeHTTPContext(ctx, resp, req)
-	if err != errors.New("boom") {
+	if err != boomErr {
 		t.Fatal("Expected error to be returned")
 	}
 
