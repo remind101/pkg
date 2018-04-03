@@ -26,7 +26,9 @@ func TestSend(t *testing.T) {
 		HTTPPath:   "/foobar",
 	}, nil, nil)
 
-	err := awsot.Send(ctx, r, func(s opentracing.Span) {
+	awsTracer := awsot.New()
+
+	err := awsTracer.Send(ctx, r, func(s opentracing.Span, r *request.Request, err error) {
 		s.SetTag("span.type", "external")
 		s.SetTag("service.name", "aws.s3")
 	})
