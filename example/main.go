@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/remind101/pkg/logger"
 	"github.com/remind101/pkg/reporter"
 	"github.com/remind101/pkg/retry"
+	"github.com/remind101/pkg/svc"
 )
 
 func ok(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
@@ -77,22 +79,14 @@ func main() {
 	m.HandleFunc("/wrap", wrap).Methods("GET")
 	m.Handle("/auth", middleware.BasicAuth(httpx.HandlerFunc(ok), "user", "pass", "realm")).Methods("GET")
 
-	var h httpx.Handler
+	h := svc.NewStandardHandler(svc.HandlerOpts{
+		Router:         m,
+		Reporter:       r,
+		ErrorHandler:   httpx.Error,
+		HandlerTimeout: 5 * time.Second,
+	})
 
-	// Recover from panics, and report the recovered error to the reporter.
-	h = middleware.Recover(m, r)
-
-	// Handles any errors returned from handlers in a common format.
-	h = middleware.HandleError(h, errorHandler)
-
-	// Adds a logger to the context.Context that will log to stdout,
-	// prefixed with the request id.
-	h = middleware.LogTo(h, middleware.StdoutLoggerWithLevel("debug"))
-
-	// Adds the request id to the context.
-	h = middleware.ExtractRequestID(h)
-
-	http.ListenAndServe(":8080", middleware.BackgroundContext(h))
+	svc.RunServer(h, "8080", 5*time.Second)
 }
 
 type Error struct {

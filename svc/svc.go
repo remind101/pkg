@@ -32,7 +32,6 @@ import (
 
 	ddtrace "github.com/DataDog/dd-trace-go/opentracing"
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/pkg/errors"
 	"github.com/remind101/pkg/httpx"
 	"github.com/remind101/pkg/httpx/middleware"
 	"github.com/remind101/pkg/logger"
@@ -111,14 +110,6 @@ func NewStandardHandler(opts HandlerOpts) http.Handler {
 // RunServer handles the biolerplate of starting an http server and handling
 // signals gracefully.
 func RunServer(h http.Handler, port string, writeTimeout time.Duration) {
-	errCh := make(chan error)
-
-	// Handle SIGINT and SIGTERM.
-	sigCh := make(chan os.Signal)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-
-	fmt.Printf("Listening on port %s\n", port)
-
 	// Add timeouts to the server
 	srv := &http.Server{
 		WriteTimeout: writeTimeout * time.Second,
@@ -126,26 +117,39 @@ func RunServer(h http.Handler, port string, writeTimeout time.Duration) {
 		Handler:      h,
 	}
 
-	go func() {
-		defer reporter.Monitor(context.Background())
-		err := srv.ListenAndServe()
-		if err != nil {
-			errCh <- errors.Wrapf(err, "unable to start server")
-		}
-	}()
+	fmt.Printf("HTTP server listening on port %s\n", port)
+	runServer(srv)
+}
 
-	select {
-	case sig := <-sigCh:
+func runServer(srv *http.Server) {
+	idleConnsClosed := make(chan struct{})
+
+	go func() {
+		// Handle SIGINT and SIGTERM.
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+		sig := <-sigCh
 		fmt.Println("Received signal, stopping.", "signal", sig)
+
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		srv.Shutdown(ctx)
-	// Cleanup
-	case err := <-errCh:
-		fmt.Println(err)
+		// We received an interrupt signal, shut down.
+		if err := srv.Shutdown(ctx); err != nil {
+			// Error from closing listeners, or context timeout:
+			fmt.Printf("HTTP server Shutdown: %v\n", err)
+		}
+		close(idleConnsClosed)
+	}()
+
+	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+		// Error starting or closing listener:
+		fmt.Printf("HTTP server ListenAndServe: %v\n", err)
 		os.Exit(1)
 	}
+
+	<-idleConnsClosed
 }
 
 // Env holds global dependencies that need to be initialized in main() and
