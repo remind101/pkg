@@ -15,7 +15,7 @@
 //			Reporter: env.Reporter,
 //	})
 //
-// 	svc.RunServer(h, "80", 5*time.Second)
+// 	svc.RunServer(h, WithPort("8080"))
 // }
 package svc
 
