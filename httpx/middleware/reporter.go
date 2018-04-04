@@ -26,6 +26,8 @@ func (m *Reporter) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, 
 	// Add the request id to reporter context.
 	ctx = errors.WithInfo(ctx, "request_id", httpx.RequestID(ctx))
 
+	r = r.WithContext(ctx)
+
 	return m.handler.ServeHTTPContext(ctx, w, r)
 }
 
