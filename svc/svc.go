@@ -107,17 +107,35 @@ func NewStandardHandler(opts HandlerOpts) http.Handler {
 	return middleware.BackgroundContext(h)
 }
 
+// RunServerOpt allows users to customize the http.Server used by RunServer.
+type RunServerOpt func(*http.Server)
+
+// RunServerDefaults specifies default server options to use for RunServer.
+var RunServerDefaults = func(srv *http.Server) {
+	srv.Addr = ":8080"
+	srv.WriteTimeout = 5 * time.Second
+	srv.ReadHeaderTimeout = 5 * time.Second
+	srv.IdleTimeout = 120 * time.Second
+}
+
+// WithPort sets the port for the server to run on.
+func WithPort(port string) RunServerOpt {
+	return func(srv *http.Server) {
+		srv.Addr = ":" + port
+	}
+}
+
 // RunServer handles the biolerplate of starting an http server and handling
 // signals gracefully.
-func RunServer(h http.Handler, port string, writeTimeout time.Duration) {
-	// Add timeouts to the server
-	srv := &http.Server{
-		WriteTimeout: writeTimeout * time.Second,
-		Addr:         ":" + port,
-		Handler:      h,
+func RunServer(h http.Handler, opts ...RunServerOpt) {
+	srv := &http.Server{Handler: h}
+
+	// Prepend defaults to server options.
+	opts = append([]RunServerOpt{RunServerDefaults}, opts...)
+	for _, opt := range opts {
+		opt(srv)
 	}
 
-	fmt.Printf("HTTP server listening on port %s\n", port)
 	runServer(srv)
 }
 
@@ -143,6 +161,7 @@ func runServer(srv *http.Server) {
 		close(idleConnsClosed)
 	}()
 
+	fmt.Printf("HTTP server listening on address: \"%s\"\n", srv.Addr)
 	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 		// Error starting or closing listener:
 		fmt.Printf("HTTP server ListenAndServe: %v\n", err)
