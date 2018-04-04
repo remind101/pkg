@@ -15,7 +15,8 @@
 //			Reporter: env.Reporter,
 //	})
 //
-// 	svc.RunServer(h, "80", 5*time.Second)
+// 	s := svc.NewServer(h, WithPort("8080"))
+//  svc.RunServer(s)
 // }
 package svc
 
@@ -107,21 +108,40 @@ func NewStandardHandler(opts HandlerOpts) http.Handler {
 	return middleware.BackgroundContext(h)
 }
 
-// RunServer handles the biolerplate of starting an http server and handling
-// signals gracefully.
-func RunServer(h http.Handler, port string, writeTimeout time.Duration) {
-	// Add timeouts to the server
-	srv := &http.Server{
-		WriteTimeout: writeTimeout * time.Second,
-		Addr:         ":" + port,
-		Handler:      h,
-	}
+// NewServerOpt allows users to customize the http.Server used by RunServer.
+type NewServerOpt func(*http.Server)
 
-	fmt.Printf("HTTP server listening on port %s\n", port)
-	runServer(srv)
+// ServerDefaults specifies default server options to use for RunServer.
+var ServerDefaults = func(srv *http.Server) {
+	srv.Addr = ":8080"
+	srv.WriteTimeout = 5 * time.Second
+	srv.ReadHeaderTimeout = 5 * time.Second
+	srv.IdleTimeout = 120 * time.Second
 }
 
-func runServer(srv *http.Server) {
+// WithPort sets the port for the server to run on.
+func WithPort(port string) NewServerOpt {
+	return func(srv *http.Server) {
+		srv.Addr = ":" + port
+	}
+}
+
+// NewServer offers some convenience and good defaults for creating an http.Server
+func NewServer(h http.Handler, opts ...NewServerOpt) *http.Server {
+	srv := &http.Server{Handler: h}
+
+	// Prepend defaults to server options.
+	opts = append([]NewServerOpt{ServerDefaults}, opts...)
+	for _, opt := range opts {
+		opt(srv)
+	}
+
+	return srv
+}
+
+// RunServer handles the biolerplate of starting an http server and handling
+// signals gracefully.
+func RunServer(srv *http.Server) {
 	idleConnsClosed := make(chan struct{})
 
 	go func() {
@@ -143,6 +163,7 @@ func runServer(srv *http.Server) {
 		close(idleConnsClosed)
 	}()
 
+	fmt.Printf("HTTP server listening on address: \"%s\"\n", srv.Addr)
 	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 		// Error starting or closing listener:
 		fmt.Printf("HTTP server ListenAndServe: %v\n", err)
