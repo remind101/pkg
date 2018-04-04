@@ -15,7 +15,8 @@
 //			Reporter: env.Reporter,
 //	})
 //
-// 	svc.RunServer(h, WithPort("8080"))
+// 	s := svc.BuildServer(h, WithPort("8080"))
+//  svc.RunServer(s)
 // }
 package svc
 
@@ -107,11 +108,11 @@ func NewStandardHandler(opts HandlerOpts) http.Handler {
 	return middleware.BackgroundContext(h)
 }
 
-// RunServerOpt allows users to customize the http.Server used by RunServer.
-type RunServerOpt func(*http.Server)
+// BuildServerOpt allows users to customize the http.Server used by RunServer.
+type BuildServerOpt func(*http.Server)
 
-// RunServerDefaults specifies default server options to use for RunServer.
-var RunServerDefaults = func(srv *http.Server) {
+// ServerDefaults specifies default server options to use for RunServer.
+var ServerDefaults = func(srv *http.Server) {
 	srv.Addr = ":8080"
 	srv.WriteTimeout = 5 * time.Second
 	srv.ReadHeaderTimeout = 5 * time.Second
@@ -119,27 +120,28 @@ var RunServerDefaults = func(srv *http.Server) {
 }
 
 // WithPort sets the port for the server to run on.
-func WithPort(port string) RunServerOpt {
+func WithPort(port string) BuildServerOpt {
 	return func(srv *http.Server) {
 		srv.Addr = ":" + port
 	}
 }
 
-// RunServer handles the biolerplate of starting an http server and handling
-// signals gracefully.
-func RunServer(h http.Handler, opts ...RunServerOpt) {
+// BuildServer offers some convenience and good defaults for creating an http.Server
+func BuildServer(h http.Handler, opts ...BuildServerOpt) *http.Server {
 	srv := &http.Server{Handler: h}
 
 	// Prepend defaults to server options.
-	opts = append([]RunServerOpt{RunServerDefaults}, opts...)
+	opts = append([]BuildServerOpt{ServerDefaults}, opts...)
 	for _, opt := range opts {
 		opt(srv)
 	}
 
-	runServer(srv)
+	return srv
 }
 
-func runServer(srv *http.Server) {
+// RunServer handles the biolerplate of starting an http server and handling
+// signals gracefully.
+func RunServer(srv *http.Server) {
 	idleConnsClosed := make(chan struct{})
 
 	go func() {

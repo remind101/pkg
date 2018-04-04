@@ -86,7 +86,8 @@ func main() {
 		HandlerTimeout: 5 * time.Second,
 	})
 
-	svc.RunServer(h)
+	s := svc.BuildServer(h)
+	svc.RunServer(s)
 }
 
 type Error struct {
