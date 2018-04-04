@@ -86,7 +86,7 @@ func main() {
 		HandlerTimeout: 5 * time.Second,
 	})
 
-	s := svc.BuildServer(h)
+	s := svc.NewServer(h)
 	svc.RunServer(s)
 }
 

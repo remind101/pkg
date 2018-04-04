@@ -15,7 +15,7 @@
 //			Reporter: env.Reporter,
 //	})
 //
-// 	s := svc.BuildServer(h, WithPort("8080"))
+// 	s := svc.NewServer(h, WithPort("8080"))
 //  svc.RunServer(s)
 // }
 package svc
@@ -108,8 +108,8 @@ func NewStandardHandler(opts HandlerOpts) http.Handler {
 	return middleware.BackgroundContext(h)
 }
 
-// BuildServerOpt allows users to customize the http.Server used by RunServer.
-type BuildServerOpt func(*http.Server)
+// NewServerOpt allows users to customize the http.Server used by RunServer.
+type NewServerOpt func(*http.Server)
 
 // ServerDefaults specifies default server options to use for RunServer.
 var ServerDefaults = func(srv *http.Server) {
@@ -120,18 +120,18 @@ var ServerDefaults = func(srv *http.Server) {
 }
 
 // WithPort sets the port for the server to run on.
-func WithPort(port string) BuildServerOpt {
+func WithPort(port string) NewServerOpt {
 	return func(srv *http.Server) {
 		srv.Addr = ":" + port
 	}
 }
 
-// BuildServer offers some convenience and good defaults for creating an http.Server
-func BuildServer(h http.Handler, opts ...BuildServerOpt) *http.Server {
+// NewServer offers some convenience and good defaults for creating an http.Server
+func NewServer(h http.Handler, opts ...NewServerOpt) *http.Server {
 	srv := &http.Server{Handler: h}
 
 	// Prepend defaults to server options.
-	opts = append([]BuildServerOpt{ServerDefaults}, opts...)
+	opts = append([]NewServerOpt{ServerDefaults}, opts...)
 	for _, opt := range opts {
 		opt(srv)
 	}
