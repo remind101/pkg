@@ -137,6 +137,10 @@ func RunServer(h http.Handler, port string, writeTimeout time.Duration) {
 	select {
 	case sig := <-sigCh:
 		fmt.Println("Received signal, stopping.", "signal", sig)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		srv.Shutdown(ctx)
 	// Cleanup
 	case err := <-errCh:
 		fmt.Println(err)
