@@ -9,15 +9,18 @@ import (
 	"github.com/remind101/pkg/reporter"
 )
 
-// See CopyToContext
+// Copy copies common httpx values injected into a request context to another
+// context.
+//
+// This is useful when performing work outside of the request lifecycle that was
+// a result of a request. For instance, the request id and tracing spans are useful
+// but the deadline of the request context does not apply.
 func Copy(ctx context.Context) context.Context {
 	return CopyToContext(context.Background(), ctx)
 }
 
-// CopyToContext provides a hook to copy an event context before publishing.
-// This is important if the given event context is actually a request context
-// whose lifecycle likely ends before subscribers have a chance to process the
-// event.
+// CopyToContext copies common httpx values injected into a request context to a
+// target context. See #Copy for an explanation of why this might be useful.
 func CopyToContext(target, source context.Context) context.Context {
 	// Copy logger
 	if l, ok := logger.FromContext(source); ok {
