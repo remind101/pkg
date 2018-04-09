@@ -3,6 +3,7 @@ package rollbar
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 
 	"context"
@@ -24,6 +25,19 @@ var Reporter = &rollbarReporter{}
 func ConfigureReporter(token, environment string) {
 	rollbar.Token = token
 	rollbar.Environment = environment
+}
+
+func ConfigureFromEnvironment() {
+	if token := os.Getenv("ROLLBAR_ACCESS_TOKEN"); token != "" {
+		rollbar.Token = token
+	}
+	if env := os.Getenv("ROLLBAR_ENVIRONMENT"); env != "" {
+		rollbar.Environment = env
+	}
+
+	if endpoint := os.Getenv("ROLLBAR_ENDPOINT"); endpoint != "" {
+		rollbar.Endpoint = endpoint
+	}
 }
 
 func (r *rollbarReporter) ReportWithLevel(ctx context.Context, level string, err error) error {
