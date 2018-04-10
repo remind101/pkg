@@ -3,6 +3,7 @@ package rollbar
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 
 	"context"
@@ -14,6 +15,12 @@ import (
 
 const ErrorLevel = "error"
 
+const (
+	EnvAccessToken = "ROLLBAR_ACCESS_TOKEN"
+	EnvEnvironment = "ROLLBAR_ENVIRONMENT"
+	EnvEndpoint    = "ROLLBAR_ENDPOINT"
+)
+
 type rollbarReporter struct{}
 
 // The stvp/rollbar package is implemented as a global, so let's not fool our
@@ -24,6 +31,19 @@ var Reporter = &rollbarReporter{}
 func ConfigureReporter(token, environment string) {
 	rollbar.Token = token
 	rollbar.Environment = environment
+}
+
+func ConfigureFromEnvironment() {
+	if token := os.Getenv(EnvAccessToken); token != "" {
+		rollbar.Token = token
+	}
+	if env := os.Getenv(EnvEnvironment); env != "" {
+		rollbar.Environment = env
+	}
+
+	if endpoint := os.Getenv(EnvEndpoint); endpoint != "" {
+		rollbar.Endpoint = endpoint
+	}
 }
 
 func (r *rollbarReporter) ReportWithLevel(ctx context.Context, level string, err error) error {

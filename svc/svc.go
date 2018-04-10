@@ -278,18 +278,16 @@ func InitLogger() logger.Logger {
 // Env Vars:
 // * ROLLBAR_ACCESS_TOKEN - The Rollbar access token
 // * ROLLBAR_ENVIRONMENT  - The Rollbar environment (staging, production)
+// * ROLLBAR_ENDPOINT     - The Rollbar endpoint: https://api.rollbar.com/api/1/item/
 func InitReporter() reporter.Reporter {
-	rbToken := os.Getenv("ROLLBAR_ACCESS_TOKEN")
-	rbEnv := os.Getenv("ROLLBAR_ENVIRONMENT")
-
 	rep := reporter.MultiReporter{}
 
 	// Log Reporter, uses package level logger.
 	rep = append(rep, reporter.NewLogReporter())
 
 	// Rollbar reporter
-	if rbToken != "" && rbEnv != "" {
-		rollbar.ConfigureReporter(rbToken, rbEnv)
+	if os.Getenv(rollbar.EnvAccessToken) != "" && os.Getenv(rollbar.EnvEnvironment) != "" {
+		rollbar.ConfigureFromEnvironment()
 		rep = append(rep, rollbar.Reporter)
 	} else {
 		fmt.Println("Rollbar is not configured, skipping Rollbar reporter")
