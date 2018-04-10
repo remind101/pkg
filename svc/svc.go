@@ -286,7 +286,7 @@ func InitReporter() reporter.Reporter {
 	rep = append(rep, reporter.NewLogReporter())
 
 	// Rollbar reporter
-	if os.Getenv("ROLLBAR_ACCESS_TOKEN") != "" && os.Getenv("ROLLBAR_ENVIRONMENT") != "" {
+	if os.Getenv(rollbar.EnvAccessToken) != "" && os.Getenv(rollbar.EnvEnvironment) != "" {
 		rollbar.ConfigureFromEnvironment()
 		rep = append(rep, rollbar.Reporter)
 	} else {

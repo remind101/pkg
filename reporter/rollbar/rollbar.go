@@ -15,6 +15,12 @@ import (
 
 const ErrorLevel = "error"
 
+const (
+	EnvAccessToken = "ROLLBAR_ACCESS_TOKEN"
+	EnvEnvironment = "ROLLBAR_ENVIRONMENT"
+	EnvEndpoint    = "ROLLBAR_ENDPOINT"
+)
+
 type rollbarReporter struct{}
 
 // The stvp/rollbar package is implemented as a global, so let's not fool our
@@ -28,14 +34,14 @@ func ConfigureReporter(token, environment string) {
 }
 
 func ConfigureFromEnvironment() {
-	if token := os.Getenv("ROLLBAR_ACCESS_TOKEN"); token != "" {
+	if token := os.Getenv(EnvAccessToken); token != "" {
 		rollbar.Token = token
 	}
-	if env := os.Getenv("ROLLBAR_ENVIRONMENT"); env != "" {
+	if env := os.Getenv(EnvEnvironment); env != "" {
 		rollbar.Environment = env
 	}
 
-	if endpoint := os.Getenv("ROLLBAR_ENDPOINT"); endpoint != "" {
+	if endpoint := os.Getenv(EnvEndpoint); endpoint != "" {
 		rollbar.Endpoint = endpoint
 	}
 }
