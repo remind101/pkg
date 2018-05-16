@@ -43,8 +43,8 @@ func NewServer(h http.Handler, opts ...NewServerOpt) *http.Server {
 
 // RunServer handles the biolerplate of starting an http server and handling
 // signals gracefully.
-func RunServer(srv *http.Server) {
-	idleConnsClosed := make(chan struct{})
+func RunServer(srv *http.Server, shutdownFuncs ...func()) {
+	done := make(chan struct{})
 
 	go func() {
 		// Handle SIGINT and SIGTERM.
@@ -62,7 +62,12 @@ func RunServer(srv *http.Server) {
 			// Error from closing listeners, or context timeout:
 			fmt.Printf("HTTP server Shutdown: %v\n", err)
 		}
-		close(idleConnsClosed)
+		// Run shutdown functions
+		for _, sf := range shutdownFuncs {
+			sf()
+		}
+
+		close(done)
 	}()
 
 	fmt.Printf("HTTP server listening on address: \"%s\"\n", srv.Addr)
@@ -72,5 +77,5 @@ func RunServer(srv *http.Server) {
 		os.Exit(1)
 	}
 
-	<-idleConnsClosed
+	<-done
 }
