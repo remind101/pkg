@@ -31,8 +31,8 @@ jobs:
       - run:
           name: Setup Container
           command: |
-              curl -k -L -o dynamodb-local.tgz http://dynamodb-local.s3-website-us-west-2.amazonaws.com/dynamodb_local_latest.tar.gz
-              tar -xzf dynamodb-local.tgz
+              test -f DynamoDBLocal.jar || curl -k -L -o dynamodb-local.tgz http://dynamodb-local.s3-website-us-west-2.amazonaws.com/dynamodb_local_latest.tar.gz
+              test -f DynamoDBLocal.jar || tar -xzf dynamodb-local.tgz
       - save_cache:
           key: dynamodb-installed
           paths:
