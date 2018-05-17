@@ -22,5 +22,17 @@ jobs:
       - checkout
 
       # specify any bash command here prefixed with `run: `
+      - run:
+        name: Setup Container
+        command: |
+            curl -k -L -o dynamodb-local.tgz http://dynamodb-local.s3-website-us-west-2.amazonaws.com/dynamodb_local_latest.tar.gz
+            tar -xzf dynamodb-local.tgz
+            java -Djava.library.path=./DynamoDBLocal_lib -jar DynamoDBLocal.jar -sharedDb
+        background: true
       - run: go get -v -t -d ./...
-      - run: go test ./...
+      - run:
+        name: Run Tests
+        command: go test ./...
+        environment:
+          AWS_ACCESS_KEY_ID: DUMMY_KEY
+          AWS_SECRET_ACCESS_KEY: DUMMY_SECRET
