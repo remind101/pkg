@@ -23,6 +23,9 @@ jobs:
 
       # specify any bash command here prefixed with `run: `
       - run:
+          name: Install Java
+          command: 'sudo apt-get update && sudo apt-get install default-jre default-jdk'
+      - run:
           name: Setup Container
           command: |
               curl -k -L -o dynamodb-local.tgz http://dynamodb-local.s3-website-us-west-2.amazonaws.com/dynamodb_local_latest.tar.gz
