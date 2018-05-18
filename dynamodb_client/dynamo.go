@@ -36,11 +36,22 @@ func NewDynamoDBClient(params DynamoConnectionParams) *DynamoClient {
 	}
 	svc := dynamodb.New(session.New(), &config)
 	//svc.Handlers.Retry.PushFrontNamed(CheckThrottleHandler)
+
 	return &DynamoClient{
 		svc,
-		params.TableDescriptions,
+		scopedTabledDescriptions(params.TableDescriptions, params.Scope),
 		params.ServiceName,
 	}
+}
+
+func scopedTabledDescriptions(tds map[string]*dynamodb.TableDescription, scope string) map[string]*dynamodb.TableDescription {
+	scopedTds := make(map[string]*dynamodb.TableDescription, len(tds))
+	for name, td := range tds {
+		newTd := *td
+		newTd.TableName = aws.String(fmt.Sprintf("%s_%s", scope, name))
+		scopedTds[name] = &newTd
+	}
+	return scopedTds
 }
 
 type DynamoKey struct {
