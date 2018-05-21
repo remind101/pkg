@@ -1,8 +1,6 @@
 package errors
 
-func NotFoundError() *notFound {
-	return &notFound{}
-}
+var NotFoundError error = &notFound{}
 
 type notFound struct{}
 
