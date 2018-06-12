@@ -48,7 +48,7 @@ func scopedTabledDescriptions(tds map[string]*dynamodb.TableDescription, scope s
 	scopedTds := make(map[string]*dynamodb.TableDescription, len(tds))
 	for name, td := range tds {
 		newTd := *td
-		newTd.TableName = aws.String(fmt.Sprintf("%s_%s", scope, name))
+		newTd.TableName = aws.String(fmt.Sprintf("%s-%s", scope, name))
 		scopedTds[name] = &newTd
 	}
 	return scopedTds
@@ -98,7 +98,7 @@ func (dc *DynamoClient) CreateTables() error {
 			return err
 		}
 		fmt.Printf("Creating table %s \n", tableName)
-		tableClient.Create(context.Background())
+		err = tableClient.Create(context.Background())
 		if err != nil {
 			if awsErr, ok := err.(awserr.Error); ok {
 				fmt.Printf("%s and %s\n", awsErr.Error(), awsErr.Code())
