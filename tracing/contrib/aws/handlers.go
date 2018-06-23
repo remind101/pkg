@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
@@ -54,6 +55,29 @@ var (
 			span.Finish()
 		},
 	}
+
+	// DynamoDBInfoHandler adds extra information to the span for requests
+	// to DynamoDB.
+	DynamoDBInfoHandler = request.NamedHandler{
+		Name: "opentracing.DynamoDB",
+		Fn: func(r *request.Request) {
+			// Check if this request is for the DynamoDB API.
+			if r.ClientInfo.ServiceName != dynamodb.ServiceName {
+				return
+			}
+
+			tableName := dynamoDBTableName(r)
+			if tableName == nil {
+				return
+			}
+
+			span := opentracing.SpanFromContext(r.Context())
+			span.SetOperationName(r.Operation.Name)
+			span.SetTag("span.type", "db")
+			span.SetTag("resource.name", *tableName)
+			span.SetTag("aws.dynamodb.table", *tableName)
+		},
+	}
 )
 
 // WithTracing adds the necessary request handlers to an AWS session.Session
@@ -62,9 +86,54 @@ func WithTracing(s *session.Session) {
 	// After adding these handlers, the "Send" handler list will look
 	// something like:
 	//
-	//	opentracing.Start -> opentracing.RequestInfo -> core.ValidateReqSigHandler -> core.SendHandler
+	//	opentracing.Start -> opentracing.RequestInfo -> opentracing.DynamoDBInfo -> core.ValidateReqSigHandler -> core.SendHandler
+	s.Handlers.Send.PushFrontNamed(DynamoDBInfoHandler)
 	s.Handlers.Send.PushFrontNamed(RequestInfoHandler)
 	s.Handlers.Send.PushFrontNamed(StartHandler)
 
 	s.Handlers.Complete.PushBackNamed(FinishHandler)
+}
+
+// dynamoDBTableName attempts to return the name of the DynamoDB table that this
+// request is operating on.
+func dynamoDBTableName(r *request.Request) *string {
+	// All DynamoDB requests that operate on a table.
+	switch v := r.Params.(type) {
+	case *dynamodb.QueryInput:
+		return v.TableName
+	case *dynamodb.ScanInput:
+		return v.TableName
+
+	case *dynamodb.PutItemInput:
+		return v.TableName
+	case *dynamodb.GetItemInput:
+		return v.TableName
+	case *dynamodb.UpdateItemInput:
+		return v.TableName
+	case *dynamodb.DeleteItemInput:
+		return v.TableName
+
+	case *dynamodb.CreateTableInput:
+		return v.TableName
+	case *dynamodb.UpdateTableInput:
+		return v.TableName
+	case *dynamodb.DeleteTableInput:
+		return v.TableName
+
+	case *dynamodb.CreateBackupInput:
+		return v.TableName
+	case *dynamodb.ListBackupsInput:
+		return v.TableName
+	case *dynamodb.DescribeContinuousBackupsInput:
+		return v.TableName
+	case *dynamodb.UpdateContinuousBackupsInput:
+		return v.TableName
+
+	case *dynamodb.DescribeTableInput:
+		return v.TableName
+	case *dynamodb.DescribeTimeToLiveInput:
+		return v.TableName
+	default:
+		return nil
+	}
 }
