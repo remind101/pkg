@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"strconv"
 
-	dd_opentracing "github.com/DataDog/dd-trace-go/opentracing"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
-	opentracing "github.com/opentracing/opentracing-go"
 )
 
 var (
@@ -96,7 +94,7 @@ func (dt *BaseTableClient) Query(ctx context.Context, opts QueryOpts) ([]map[str
 	input := dt.buildQuery(opts)
 
 	req, output := dt.client.QueryRequest(input)
-	err := dt.sendWithTracing(ctx, req)
+	err := dt.send(ctx, req)
 
 	return output.Items, err
 }
@@ -110,7 +108,7 @@ func (dt *BaseTableClient) PutItem(ctx context.Context, hashKey, rangeKey string
 	}
 
 	req, _ := dt.client.PutItemRequest(input)
-	err := dt.sendWithTracing(ctx, req)
+	err := dt.send(ctx, req)
 
 	return err
 }
@@ -124,7 +122,7 @@ func (dt *BaseTableClient) DeleteItem(ctx context.Context, hashKey, rangeKey str
 	}
 
 	req, _ := dt.client.DeleteItemRequest(input)
-	err := dt.sendWithTracing(ctx, req)
+	err := dt.send(ctx, req)
 
 	return err
 }
@@ -141,7 +139,7 @@ func (dt *BaseTableClient) DeleteItem(ctx context.Context, hashKey, rangeKey str
 //	}
 //
 //	req, output := dt.client.DeleteItemRequest(input)
-//	err := dt.sendWithTracing(ctx, req)
+//	err := dt.send(ctx, req)
 //
 //	return err
 //}
@@ -158,7 +156,7 @@ func (dt *BaseTableClient) DeleteItem(ctx context.Context, hashKey, rangeKey str
 //	}
 //
 //	req, output := dt.client.PutItemRequest(input)
-//	err := dt.sendWithTracing(ctx, req)
+//	err := dt.send(ctx, req)
 //
 //	return err
 //}
@@ -176,7 +174,7 @@ func (dt *BaseTableClient) DeleteItem(ctx context.Context, hashKey, rangeKey str
 //	}
 //
 //	req, output := dt.client.UpdateItemRequest(input)
-//	err := dt.sendWithTracing(ctx, req)
+//	err := dt.send(ctx, req)
 //
 //	return err
 //}
@@ -191,7 +189,7 @@ func (dt *BaseTableClient) GetItem(ctx context.Context, hashKey, rangeKey string
 	}
 
 	req, output := dt.client.GetItemRequest(input)
-	err := dt.sendWithTracing(ctx, req)
+	err := dt.send(ctx, req)
 
 	if output != nil {
 		// Do we still want this?
@@ -245,7 +243,7 @@ func (dt *BaseTableClient) Create(ctx context.Context) error {
 	}
 
 	req, _ := dt.client.CreateTableRequest(input)
-	err := dt.sendWithTracing(ctx, req)
+	err := dt.send(ctx, req)
 
 	return err
 }
@@ -256,7 +254,7 @@ func (dt *BaseTableClient) Delete(ctx context.Context) error {
 	}
 
 	req, _ := dt.client.DeleteTableRequest(input)
-	err := dt.sendWithTracing(ctx, req)
+	err := dt.send(ctx, req)
 
 	return err
 }
@@ -273,7 +271,7 @@ func (dt *BaseTableClient) Delete(ctx context.Context) error {
 //	}
 //
 //	req, _ := dt.client.UpdateTableRequest(input)
-//	err := dt.sendWithTracing(ctx, req)
+//	err := dt.send(ctx, req)
 //
 //	if err != nil {
 //		if awsErr, ok := err.(awserr.Error); ok {
@@ -315,7 +313,7 @@ func (dt *BaseTableClient) BatchGetDocument(ctx context.Context, keys []DynamoKe
 	}
 
 	req, output := dt.client.BatchGetItemRequest(input)
-	err := dt.sendWithTracing(ctx, req)
+	err := dt.send(ctx, req)
 
 	return output, req, err
 }
@@ -345,7 +343,7 @@ func (dt *BaseTableClient) BatchPutDocument(ctx context.Context, keys []DynamoKe
 	}
 
 	req, output := dt.client.BatchWriteItemRequest(input)
-	err := dt.sendWithTracing(ctx, req)
+	err := dt.send(ctx, req)
 
 	return output, req, err
 }
@@ -371,7 +369,7 @@ func (dt *BaseTableClient) BatchDeleteDocument(ctx context.Context, keys []Dynam
 	}
 
 	req, output := dt.client.BatchWriteItemRequest(input)
-	err := dt.sendWithTracing(ctx, req)
+	err := dt.send(ctx, req)
 
 	return output, req, err
 }
@@ -499,31 +497,7 @@ func (dt *BaseTableClient) buildQuery(opts QueryOpts) *dynamodb.QueryInput {
 	return qi
 }
 
-func (dt *BaseTableClient) sendWithTracing(ctx context.Context, r *request.Request) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "client.request")
-	defer span.Finish()
-	r.HTTPRequest = r.HTTPRequest.WithContext(ctx)
-
-	span.SetTag(dd_opentracing.SpanType, "db")
-	span.SetTag(dd_opentracing.ServiceName, dt.serviceName)
-	span.SetTag(dd_opentracing.ResourceName, r.Operation.Name)
-	span.SetTag("http.method", r.Operation.HTTPMethod)
-	span.SetTag("http.url", r.ClientInfo.Endpoint+r.Operation.HTTPPath)
-	span.SetTag("out.host", r.ClientInfo.Endpoint)
-	span.SetTag("aws.operation", r.Operation.Name)
-	span.SetTag("aws.table_name", dt.tableName)
-
-	err := r.Send()
-
-	span.SetTag("aws.retry_count", r.RetryCount)
-
-	if r.HTTPResponse != nil {
-		span.SetTag("http.status_code", r.HTTPResponse.StatusCode)
-	}
-
-	if err != nil {
-		span.SetTag(dd_opentracing.Error, err)
-	}
-
-	return err
+func (dt *BaseTableClient) send(ctx context.Context, r *request.Request) error {
+	r.SetContext(ctx)
+	return r.Send()
 }
