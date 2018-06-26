@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	. "github.com/remind101/pkg/dynamodb_client"
@@ -57,7 +58,7 @@ func newFreshDynamoClient() *DynamoClient {
 		Scope:             "client-test",
 		TableDescriptions: AllTableDescriptions,
 	}
-	c := NewDynamoDBClient(params)
+	c := NewDynamoDBClient(session.New(), params)
 	c.DeleteTables()
 	c.CreateTables()
 	return c

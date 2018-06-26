@@ -6,7 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/remind101/pkg/logger"
@@ -26,7 +26,7 @@ type DynamoConnectionParams struct {
 	ServiceName       string // Name to use in apm
 }
 
-func NewDynamoDBClient(params DynamoConnectionParams) *DynamoClient {
+func NewDynamoDBClient(c client.ConfigProvider, params DynamoConnectionParams) *DynamoClient {
 	if params.RegionName == "" {
 		params.RegionName = "us-east-1"
 	}
@@ -34,7 +34,7 @@ func NewDynamoDBClient(params DynamoConnectionParams) *DynamoClient {
 		Region:   aws.String(params.RegionName),
 		Endpoint: aws.String(params.LocalDynamoURL),
 	}
-	svc := dynamodb.New(session.New(), &config)
+	svc := dynamodb.New(c, &config)
 	//svc.Handlers.Retry.PushFrontNamed(CheckThrottleHandler)
 
 	return &DynamoClient{
