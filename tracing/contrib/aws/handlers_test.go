@@ -2,7 +2,6 @@ package aws_test
 
 import (
 	"context"
-	"net/http"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -13,28 +12,26 @@ import (
 	awsot "github.com/remind101/pkg/tracing/contrib/aws"
 )
 
-func TestSend(t *testing.T) {
+func TestWithTracing(t *testing.T) {
 	tracer := mocktracer.New()
 	opentracing.SetGlobalTracer(tracer)
+
+	awsot.WithTracing(mock.Session)
 
 	_, ctx := opentracing.StartSpanFromContext(context.Background(), "root")
 
 	client := mock.NewMockClient(&aws.Config{Region: aws.String("us-west-2")})
+
 	r := client.NewRequest(&request.Operation{
 		Name:       "object.get",
 		HTTPMethod: "GET",
 		HTTPPath:   "/foobar",
 	}, nil, nil)
 
-	awsTracer := awsot.New()
-
-	err := awsTracer.Send(ctx, r, func(s opentracing.Span, r *request.Request, err error) {
-		s.SetTag("span.type", "external")
-		s.SetTag("service.name", "aws.s3")
-	})
-
+	r.SetContext(ctx)
+	err := r.Send()
 	if err != nil {
-		t.Fatalf("expected no error; got %v", err)
+		t.Fatal(err)
 	}
 
 	spans := tracer.FinishedSpans()
@@ -42,31 +39,32 @@ func TestSend(t *testing.T) {
 		t.Fatal("expected 1 finished span")
 	}
 	span := spans[0]
+
 	if got, want := span.OperationName, "client.request"; got != want {
 		t.Errorf("got: %+v; expected %+v", got, want)
 	}
 
-	tags := map[string]string{
-		"span.type":     "external",
-		"service.name":  "aws.s3",
-		"resource.name": "object.get",
-		"http.method":   "GET",
-		"http.url":      client.Endpoint + "/foobar",
-		"out.host":      client.Endpoint,
-		"aws.operation": "object.get",
-	}
+	assertTags(t, span, map[string]string{
+		"service.name":     "aws.Mock",
+		"resource.name":    "object.get",
+		"http.method":      "GET",
+		"http.url":         client.Endpoint + "/foobar",
+		"http.status_code": "200",
+		"out.host":         client.Endpoint,
+		"aws.operation":    "object.get",
+		"aws.retry_count":  "0",
+	})
+}
 
+func assertTags(t testing.TB, span *mocktracer.MockSpan, tags map[string]string) {
 	for k, v := range tags {
-		if got, want := span.Tag(k).(string), v; got != want {
+		tagName, ok := span.Tag(k).(string)
+		if !ok {
+			t.Errorf("no %s tag", k)
+		}
+
+		if got, want := tagName, v; got != want {
 			t.Errorf("span.Tag('%s'): %+v; expected %+v", k, got, want)
 		}
-	}
-
-	if got, want := span.Tag("http.status_code").(int), http.StatusOK; got != want {
-		t.Errorf("got: %+v; expected %+v", got, want)
-	}
-
-	if got, want := span.Tag("aws.retry_count").(int), 0; got != want {
-		t.Errorf("got: %+v; expected %+v", got, want)
 	}
 }
