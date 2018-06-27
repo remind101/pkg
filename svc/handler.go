@@ -39,11 +39,10 @@ type HandlerOpts struct {
 	HandlerTimeout    time.Duration
 }
 
-// NewStandardHandler returns an http.Handler with a standard middleware stack.
-// The last middleware added is the first middleware to handle the request.
-// Order is pretty important as some middleware depends on others having run
-// already.
-func NewStandardHandler(opts HandlerOpts) http.Handler {
+// NewHandler returns an httpx.Handler with a standard middleware stack.  The
+// last middleware added is the first middleware to handle the request.  Order
+// is pretty important as some middleware depends on others having run already.
+func NewHandler(opts HandlerOpts) httpx.Handler {
 	h := opts.Router
 
 	if opts.HandlerTimeout != 0 {
@@ -94,5 +93,11 @@ func NewStandardHandler(opts HandlerOpts) http.Handler {
 
 	// Wrap the route in middleware to add a context.Context. This middleware must be
 	// last as it acts as the adaptor between http.Handler and httpx.Handler.
+	return h
+}
+
+// NewStandardHandler returns an http.Handler with a standard middleware stack.
+func NewStandardHandler(opts HandlerOpts) http.Handler {
+	h := NewHandler(opts)
 	return middleware.BackgroundContext(h)
 }
