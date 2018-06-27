@@ -92,13 +92,14 @@ func runOpentracingTest(t *testing.T, tt *opentracingTest) {
 
 	m = &OpentracingTracer{
 		handler: r,
-		router:  r,
 	}
 
 	ctx := context.Background()
 	resp := httptest.NewRecorder()
 
-	if err := m.ServeHTTPContext(ctx, resp, tt.req); err != nil {
+	route, _, _ := r.Handler(tt.req)
+
+	if err := m.ServeHTTPContext(httpx.WithRoute(ctx, route), resp, tt.req); err != nil {
 		t.Fatal(err)
 	}
 

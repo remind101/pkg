@@ -31,7 +31,7 @@ import (
 )
 
 type HandlerOpts struct {
-	Router            *httpx.Router
+	Router            httpx.Handler
 	Reporter          reporter.Reporter
 	ForwardingHeaders []string
 	BasicAuth         string
@@ -44,7 +44,7 @@ type HandlerOpts struct {
 // Order is pretty important as some middleware depends on others having run
 // already.
 func NewStandardHandler(opts HandlerOpts) http.Handler {
-	h := httpx.Handler(opts.Router)
+	h := opts.Router
 
 	if opts.HandlerTimeout != 0 {
 		// Timeout requests after the given Timeout duration.
@@ -66,7 +66,7 @@ func NewStandardHandler(opts HandlerOpts) http.Handler {
 
 	// Add request tracing. Must go after the HandleError middleware in order
 	// to capture the status code written to the response.
-	h = middleware.OpentracingTracing(h, opts.Router)
+	h = middleware.OpentracingTracing(h)
 
 	// Insert logger into context and log requests at INFO level.
 	h = middleware.LogTo(h, middleware.LoggerWithRequestID)

@@ -14,15 +14,14 @@ import (
 
 type OpentracingTracer struct {
 	handler httpx.Handler
-	router  *httpx.Router
 }
 
-func OpentracingTracing(h httpx.Handler, router *httpx.Router) *OpentracingTracer {
-	return &OpentracingTracer{h, router}
+func OpentracingTracing(h httpx.Handler) *OpentracingTracer {
+	return &OpentracingTracer{h}
 }
 
 func (h *OpentracingTracer) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	path := otTemplatePath(h.router, r)
+	path := otTemplatePath(ctx)
 	route := fmt.Sprintf("%s %s", r.Method, path)
 
 	var span opentracing.Span
@@ -57,10 +56,10 @@ func (h *OpentracingTracer) ServeHTTPContext(ctx context.Context, w http.Respons
 	return reqErr
 }
 
-func otTemplatePath(router *httpx.Router, r *http.Request) string {
+func otTemplatePath(ctx context.Context) string {
 	var tpl string
 
-	route, _, _ := router.Handler(r)
+	route := httpx.RouteFromContext(ctx)
 	if route != nil {
 		tpl = route.GetPathTemplate()
 	}
