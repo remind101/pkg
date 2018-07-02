@@ -71,7 +71,7 @@ func (r *rollbarReporter) ReportWithLevel(ctx context.Context, level string, err
 	return nil
 }
 
-func (r *rollbarReporter) Wait() {
+func (r *rollbarReporter) Flush() {
 	rollbar.Wait()
 }
 

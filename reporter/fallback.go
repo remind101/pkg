@@ -21,6 +21,6 @@ func (r *FallbackReporter) ReportWithLevel(ctx context.Context, level string, er
 }
 
 func (r *FallbackReporter) Wait() {
-	r.Reporter.Wait()
-	r.Fallback.Wait()
+	r.Reporter.Flush()
+	r.Fallback.Flush()
 }

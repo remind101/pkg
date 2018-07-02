@@ -64,7 +64,7 @@ func (r *HbReporter) ReportWithLevel(ctx context.Context, level string, err erro
 	return clientErr
 }
 
-func (r *HbReporter) Wait() {
+func (r *HbReporter) Flush() {
 	r.client.Flush()
 }
 
