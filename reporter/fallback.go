@@ -20,7 +20,7 @@ func (r *FallbackReporter) ReportWithLevel(ctx context.Context, level string, er
 	return nil
 }
 
-func (r *FallbackReporter) Wait() {
+func (r *FallbackReporter) Flush() {
 	r.Reporter.Flush()
 	r.Fallback.Flush()
 }
