@@ -22,3 +22,9 @@ func (r MultiReporter) ReportWithLevel(ctx context.Context, level string, err er
 
 	return &MultiError{Errors: errors}
 }
+
+func (r MultiReporter) Wait() {
+	for _, reporter := range r {
+		reporter.Wait()
+	}
+}

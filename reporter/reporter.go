@@ -21,6 +21,11 @@ type Reporter interface {
 	// information. Implementers should type assert the error to an *Error
 	// if they want to report the stack trace.
 	ReportWithLevel(context.Context, string, error) error
+
+	// Wait will block until all errors are sent to the external system.
+	// This is useful for short-lived processes that may be terminated
+	// before the errors get sent.
+	Wait()
 }
 
 // ReporterFunc is a function signature that conforms to the Reporter interface.
@@ -29,6 +34,10 @@ type ReporterFunc func(context.Context, string, error) error
 // Report implements the Reporter interface.
 func (f ReporterFunc) ReportWithLevel(ctx context.Context, level string, err error) error {
 	return f(ctx, level, err)
+}
+
+func (f ReporterFunc) Wait() {
+	// Nothing to do.
 }
 
 // FromContext extracts a Reporter from a context.Context.
@@ -73,6 +82,15 @@ func Report(ctx context.Context, err error) error {
 	return reportWithLevel(ctx, DefaultLevel, e)
 }
 
+// Wait for the Reporter embedded within the context.Context to flush
+func Wait(ctx context.Context) {
+	if r, ok := FromContext(ctx); ok {
+		r.Wait()
+	}
+
+	panic("No reporter in provided context.")
+}
+
 func reportWithLevel(ctx context.Context, level string, err error) error {
 	if r, ok := FromContext(ctx); ok {
 		return r.ReportWithLevel(ctx, level, err)
@@ -93,6 +111,7 @@ func reportWithLevel(ctx context.Context, level string, err error) error {
 func Monitor(ctx context.Context) {
 	if err := errors.Recover(ctx, recover()); err != nil {
 		Report(ctx, err)
+		Wait(ctx)
 		panic(err)
 	}
 }
