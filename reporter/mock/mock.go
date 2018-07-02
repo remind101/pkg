@@ -22,3 +22,7 @@ func (r *Reporter) ReportWithLevel(ctx context.Context, level string, err error)
 	r.Calls = append(r.Calls, Params{ctx, level, err})
 	return nil
 }
+
+func (r *Reporter) Wait() {
+	// Nothing to do.
+}
