@@ -71,6 +71,10 @@ func (r *rollbarReporter) ReportWithLevel(ctx context.Context, level string, err
 	return nil
 }
 
+func (r *rollbarReporter) Flush() {
+	rollbar.Wait()
+}
+
 func reportToRollbar(level string, request *http.Request, err error, stack rollbar.Stack, extraFields []*rollbar.Field) {
 	if request != nil {
 		if stack != nil {

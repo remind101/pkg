@@ -19,3 +19,12 @@ func (r *FallbackReporter) ReportWithLevel(ctx context.Context, level string, er
 
 	return nil
 }
+
+func (r *FallbackReporter) Flush() {
+	if flushableReporter, ok := r.Reporter.(flusher); ok {
+		flushableReporter.Flush()
+	}
+	if flushableFallback, ok := r.Fallback.(flusher); ok {
+		flushableFallback.Flush()
+	}
+}

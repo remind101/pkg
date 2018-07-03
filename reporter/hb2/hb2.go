@@ -64,6 +64,10 @@ func (r *HbReporter) ReportWithLevel(ctx context.Context, level string, err erro
 	return clientErr
 }
 
+func (r *HbReporter) Flush() {
+	r.client.Flush()
+}
+
 func getRequestData(r *http.Request) honeybadger.CGIData {
 	cgiData := honeybadger.CGIData{}
 	replacer := strings.NewReplacer("-", "_")

@@ -23,6 +23,14 @@ type Reporter interface {
 	ReportWithLevel(context.Context, string, error) error
 }
 
+// Reporters should implement this interface if they need to be flushed.
+type flusher interface {
+	// Flush will block until all errors are sent to the external system.
+	// This is useful for short-lived processes that may be terminated
+	// before the errors get sent.
+	Flush()
+}
+
 // ReporterFunc is a function signature that conforms to the Reporter interface.
 type ReporterFunc func(context.Context, string, error) error
 
@@ -73,6 +81,15 @@ func Report(ctx context.Context, err error) error {
 	return reportWithLevel(ctx, DefaultLevel, e)
 }
 
+// Flush the Reporter embedded within the context.Context
+func Flush(ctx context.Context) {
+	if r, ok := FromContext(ctx); ok {
+		if f, ok := r.(flusher); ok {
+			f.Flush()
+		}
+	}
+}
+
 func reportWithLevel(ctx context.Context, level string, err error) error {
 	if r, ok := FromContext(ctx); ok {
 		return r.ReportWithLevel(ctx, level, err)
@@ -93,6 +110,7 @@ func reportWithLevel(ctx context.Context, level string, err error) error {
 func Monitor(ctx context.Context) {
 	if err := errors.Recover(ctx, recover()); err != nil {
 		Report(ctx, err)
+		Flush(ctx)
 		panic(err)
 	}
 }
