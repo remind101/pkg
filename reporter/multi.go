@@ -25,6 +25,8 @@ func (r MultiReporter) ReportWithLevel(ctx context.Context, level string, err er
 
 func (r MultiReporter) Flush() {
 	for _, reporter := range r {
-		reporter.Flush()
+		if f, ok := reporter.(flusher); ok {
+			f.Flush()
+		}
 	}
 }

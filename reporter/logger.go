@@ -45,7 +45,3 @@ func (h *LogReporter) ReportWithLevel(ctx context.Context, level string, err err
 	}
 	return nil
 }
-
-func (h *LogReporter) Flush() {
-	// Nothing to do.
-}

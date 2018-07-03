@@ -22,7 +22,3 @@ func (r *Reporter) ReportWithLevel(ctx context.Context, level string, err error)
 	r.Calls = append(r.Calls, Params{ctx, level, err})
 	return nil
 }
-
-func (r *Reporter) Flush() {
-	// Nothing to do.
-}

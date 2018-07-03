@@ -48,7 +48,3 @@ func (r *Reporter) ReportWithLevel(ctx context.Context, level string, err error)
 	}
 	return nil
 }
-
-func (r *Reporter) Flush() {
-	// Doesn't look like we can wait for New Relic to flush.
-}

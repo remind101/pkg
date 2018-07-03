@@ -21,7 +21,10 @@ type Reporter interface {
 	// information. Implementers should type assert the error to an *Error
 	// if they want to report the stack trace.
 	ReportWithLevel(context.Context, string, error) error
+}
 
+// Reporters should implement this interface if they need to be flushed.
+type flusher interface {
 	// Flush will block until all errors are sent to the external system.
 	// This is useful for short-lived processes that may be terminated
 	// before the errors get sent.
@@ -34,10 +37,6 @@ type ReporterFunc func(context.Context, string, error) error
 // Report implements the Reporter interface.
 func (f ReporterFunc) ReportWithLevel(ctx context.Context, level string, err error) error {
 	return f(ctx, level, err)
-}
-
-func (f ReporterFunc) Flush() {
-	// Nothing to do.
 }
 
 // FromContext extracts a Reporter from a context.Context.
@@ -85,10 +84,10 @@ func Report(ctx context.Context, err error) error {
 // Flush the Reporter embedded within the context.Context
 func Flush(ctx context.Context) {
 	if r, ok := FromContext(ctx); ok {
-		r.Flush()
+		if f, ok := r.(flusher); ok {
+			f.Flush()
+		}
 	}
-
-	panic("No reporter in provided context.")
 }
 
 func reportWithLevel(ctx context.Context, level string, err error) error {
