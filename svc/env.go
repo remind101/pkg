@@ -49,7 +49,6 @@ func InitAll() Env {
 		Close: func() {
 			traceCloser()
 			metricsCloser()
-			reporter.Monitor(ctx)
 		},
 	}
 }
