@@ -24,7 +24,7 @@ func WrapClient(ctx context.Context, c *redis.Client, serviceName string) *redis
 			span.SetTag(ext.ServiceName, serviceName)
 			span.SetTag(ext.SpanType, "cache")
 			span.SetTag(ext.ResourceName, cmd.Name())
-			span.SetTag("redis.command", cmd.String())
+			// span.SetTag("redis.command", cmd.String())
 			defer span.Finish()
 
 			err := oldProcess(cmd)
