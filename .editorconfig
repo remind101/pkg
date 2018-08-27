@@ -1,2 +1,2 @@
-[*.go]
+[*]
 indent_size = 2
