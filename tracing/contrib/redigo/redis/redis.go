@@ -12,9 +12,9 @@ import (
 	"net/url"
 	"strconv"
 
-	dd_opentracing "github.com/DataDog/dd-trace-go/opentracing"
-	redis "github.com/garyburd/redigo/redis"
-	opentracing "github.com/opentracing/opentracing-go"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
+	"github.com/garyburd/redigo/redis"
+	"github.com/opentracing/opentracing-go"
 )
 
 // DialURL connects to a Redis server at the given URL using the Redis
@@ -78,7 +78,7 @@ func (tc Conn) Do(commandName string, args ...interface{}) (reply interface{}, e
 	span := tc.newChildSpan(ctx)
 	defer func() {
 		if err != nil {
-			span.SetTag(dd_opentracing.Error, err)
+			span.SetTag(ext.Error, err)
 		}
 		span.Finish()
 	}()
@@ -86,11 +86,11 @@ func (tc Conn) Do(commandName string, args ...interface{}) (reply interface{}, e
 	span.SetTag("redis.args_length", strconv.Itoa(len(args)))
 
 	if len(commandName) > 0 {
-		span.SetTag(dd_opentracing.ResourceName, commandName)
+		span.SetTag(ext.ResourceName, commandName)
 	} else {
 		// When the command argument to the Do method is "", then the Do method will flush the output buffer
 		// See https://godoc.org/github.com/garyburd/redigo/redis#hdr-Pipelining
-		span.SetTag(dd_opentracing.ResourceName, "conn.flush")
+		span.SetTag(ext.ResourceName, "conn.flush")
 	}
 	var b bytes.Buffer
 	b.WriteString(commandName)
@@ -117,8 +117,8 @@ func (tc Conn) Do(commandName string, args ...interface{}) (reply interface{}, e
 func (tc Conn) newChildSpan(ctx context.Context) opentracing.Span {
 	p := tc.params
 	span, _ := opentracing.StartSpanFromContext(ctx, "redis.command")
-	span.SetTag(dd_opentracing.ServiceName, p.config.serviceName)
-	span.SetTag(dd_opentracing.SpanType, "cache")
+	span.SetTag(ext.ServiceName, p.config.serviceName)
+	span.SetTag(ext.SpanType, "cache")
 	span.SetTag("out.network", p.network)
 	span.SetTag("out.port", p.port)
 	span.SetTag("out.host", p.host)

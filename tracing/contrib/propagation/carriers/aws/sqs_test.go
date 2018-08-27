@@ -3,21 +3,20 @@ package aws
 import (
 	"testing"
 
-	dd_opentracing "github.com/DataDog/dd-trace-go/opentracing"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
+	"github.com/opentracing/opentracing-go/mocktracer"
 )
 
 func TestSQSCarrier(t *testing.T) {
-	config := dd_opentracing.NewConfiguration()
-	tracer, _, err := dd_opentracing.NewTracer(config)
+	tracer := mocktracer.New()
 	opentracing.SetGlobalTracer(tracer)
 
 	span := opentracing.StartSpan("test span")
 	m := &sqs.Message{}
-	err = opentracing.GlobalTracer().Inject(
+	err := opentracing.GlobalTracer().Inject(
 		span.Context(),
 		opentracing.TextMap,
 		SQSCarrier(m),
@@ -35,20 +34,19 @@ func TestSQSCarrier(t *testing.T) {
 		return
 	}
 	newSpan := opentracing.StartSpan("newSpan", ext.RPCServerOption(wireContext))
-	if newSpan.(*dd_opentracing.Span).Span.ParentID != span.(*dd_opentracing.Span).Span.SpanID {
+	if newSpan.(*mocktracer.MockSpan).ParentID != span.(*mocktracer.MockSpan).SpanContext.SpanID {
 		t.Error("ParentID didn't match original spanID")
 		return
 	}
 }
 
 func TestSNSCarrier(t *testing.T) {
-	config := dd_opentracing.NewConfiguration()
-	tracer, _, err := dd_opentracing.NewTracer(config)
+	tracer := mocktracer.New()
 	opentracing.SetGlobalTracer(tracer)
 
 	span := opentracing.StartSpan("test span")
 	m := &sns.PublishInput{}
-	err = opentracing.GlobalTracer().Inject(
+	err := opentracing.GlobalTracer().Inject(
 		span.Context(),
 		opentracing.TextMap,
 		SNSCarrier(m),
@@ -66,7 +64,7 @@ func TestSNSCarrier(t *testing.T) {
 		return
 	}
 	newSpan := opentracing.StartSpan("newSpan", ext.RPCServerOption(wireContext))
-	if newSpan.(*dd_opentracing.Span).Span.ParentID != span.(*dd_opentracing.Span).Span.SpanID {
+	if newSpan.(*mocktracer.MockSpan).ParentID != span.(*mocktracer.MockSpan).SpanContext.SpanID {
 		t.Error("ParentID didn't match original spanID")
 		return
 	}

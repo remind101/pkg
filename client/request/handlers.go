@@ -12,9 +12,9 @@ import (
 	"regexp"
 	"strconv"
 
-	httpsignatures "github.com/99designs/httpsignatures-go"
-	dd_opentracing "github.com/DataDog/dd-trace-go/opentracing"
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/99designs/httpsignatures-go"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/remind101/pkg/httpx"
 )
@@ -269,7 +269,7 @@ func WithTracing(h Handler) Handler {
 			defer span.Finish()
 			r.HTTPRequest = r.HTTPRequest.WithContext(ctx)
 
-			span.SetTag(dd_opentracing.ResourceName, r.ClientInfo.ServiceName)
+			span.SetTag(ext.ResourceName, r.ClientInfo.ServiceName)
 			span.SetTag("http.method", r.HTTPRequest.Method)
 			span.SetTag("http.url", r.HTTPRequest.URL.Hostname()+r.HTTPRequest.URL.EscapedPath())
 			span.SetTag("out.host", r.HTTPRequest.URL.Hostname())
@@ -282,7 +282,7 @@ func WithTracing(h Handler) Handler {
 			}
 
 			if r.Error != nil {
-				span.SetTag(dd_opentracing.Error, r.Error)
+				span.SetTag(ext.Error, r.Error)
 			}
 		},
 	}

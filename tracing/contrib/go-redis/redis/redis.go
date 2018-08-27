@@ -3,9 +3,9 @@ package redis
 import (
 	"context"
 
-	dd_opentracing "github.com/DataDog/dd-trace-go/opentracing"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
 	"github.com/go-redis/redis"
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 )
 
 func WrapClient(ctx context.Context, c *redis.Client, serviceName string) *redis.Client {
@@ -21,15 +21,15 @@ func WrapClient(ctx context.Context, c *redis.Client, serviceName string) *redis
 	copy.WrapProcess(func(oldProcess func(cmd redis.Cmder) error) func(cmd redis.Cmder) error {
 		return func(cmd redis.Cmder) error {
 			span, _ := opentracing.StartSpanFromContext(ctx, "redis.command")
-			span.SetTag(dd_opentracing.ServiceName, serviceName)
-			span.SetTag(dd_opentracing.SpanType, "cache")
-			span.SetTag(dd_opentracing.ResourceName, cmd.Name())
-			span.SetTag("redis.command", cmd.String())
+			span.SetTag(ext.ServiceName, serviceName)
+			span.SetTag(ext.SpanType, "cache")
+			span.SetTag(ext.ResourceName, cmd.Name())
+			// span.SetTag("redis.command", cmd.String())
 			defer span.Finish()
 
 			err := oldProcess(cmd)
 			if err != nil && err != redis.Nil {
-				span.SetTag(dd_opentracing.Error, err)
+				span.SetTag(ext.Error, err)
 			}
 			return err
 		}
