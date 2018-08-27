@@ -6,8 +6,9 @@ import (
 	"log"
 	"os"
 
-	ddtrace "github.com/DataDog/dd-trace-go/opentracing"
-	opentracing "github.com/opentracing/opentracing-go"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/opentracer"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
+	"github.com/opentracing/opentracing-go"
 	"github.com/remind101/pkg/logger"
 	"github.com/remind101/pkg/metrics"
 	"github.com/remind101/pkg/reporter"
@@ -60,25 +61,25 @@ func InitAll() Env {
 // * EMPIRE_APPNAME - App name, used to construct the service name.
 // * EMPIRE_PROCESS - Process name, used to construct the service name.
 func InitTracer() func() {
+	var opts []tracer.StartOption
 	// create a Tracer configuration
-	config := ddtrace.NewConfiguration()
-	config.ServiceName = fmt.Sprintf("%s.%s", os.Getenv("EMPIRE_APPNAME"), os.Getenv("EMPIRE_PROCESS"))
+	opts = append(opts, tracer.WithServiceName(fmt.Sprintf(
+		"%s.%s",
+		os.Getenv("EMPIRE_APPNAME"),
+		os.Getenv("EMPIRE_PROCESS"))))
 	if addr := os.Getenv("DDTRACE_ADDR"); addr != "" {
-		config.AgentHostname = addr
+		opts = append(opts, tracer.WithAgentAddr(addr))
 	}
 
 	// Initialize a Tracer and ensure a graceful shutdown
 	// using the `closer.Close()`
-	tracer, closer, err := ddtrace.NewTracer(config)
-	if err != nil {
-		fmt.Println(err)
-	}
+	tracer := opentracer.New(opts...)
 
 	// set the Datadog tracer as a GlobalTracer
 	opentracing.SetGlobalTracer(tracer)
 
 	return func() {
-		closer.Close()
+		// I can't find a way to flush in the new tracer API
 	}
 }
 

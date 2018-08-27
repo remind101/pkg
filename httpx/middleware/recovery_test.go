@@ -15,14 +15,11 @@ import (
 
 func TestRecovery(t *testing.T) {
 	var (
-		called  bool
 		errBoom = gerrors.New("boom")
 	)
 
 	h := &Recovery{
 		Reporter: reporter.ReporterFunc(func(ctx context.Context, level string, err error) error {
-			called = true
-
 			e := err.(*errors.Error)
 
 			if e.Err != errBoom {

@@ -22,10 +22,8 @@ func TestIsAReporter(t *testing.T) {
 
 func TestReportsThingsToRollbar(t *testing.T) {
 	body := map[string]interface{}{}
-	reached := false
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		reached = true
 		body = decodeBody(r.Body)
 	}))
 	defer ts.Close()

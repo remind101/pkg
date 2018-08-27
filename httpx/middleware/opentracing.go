@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
-	dd_opentracing "github.com/DataDog/dd-trace-go/opentracing"
-	dd_ext "github.com/DataDog/dd-trace-go/tracer/ext"
-	opentracing "github.com/opentracing/opentracing-go"
+	dd_ext "gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
+	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 	"github.com/remind101/pkg/httpx"
 )
@@ -34,8 +33,8 @@ func (h *OpentracingTracer) ServeHTTPContext(ctx context.Context, w http.Respons
 	} else {
 		span = opentracing.StartSpan("server.request", ext.RPCServerOption(wireContext))
 	}
-	span.SetTag(dd_opentracing.ResourceName, route)
-	span.SetTag(dd_opentracing.SpanType, "web")
+	span.SetTag(dd_ext.ResourceName, route)
+	span.SetTag(dd_ext.SpanType, "web")
 	span.SetTag(dd_ext.HTTPMethod, r.Method)
 	span.SetTag(dd_ext.HTTPURL, r.RequestURI)
 
@@ -50,7 +49,7 @@ func (h *OpentracingTracer) ServeHTTPContext(ctx context.Context, w http.Respons
 	rw := NewResponseWriter(w)
 	reqErr := h.handler.ServeHTTPContext(ctx, rw, r)
 	if reqErr != nil {
-		span.SetTag(dd_opentracing.Error, reqErr)
+		span.SetTag(dd_ext.Error, reqErr)
 	}
 	span.SetTag(dd_ext.HTTPCode, rw.Status())
 
