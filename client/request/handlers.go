@@ -172,6 +172,7 @@ var JSONBuilder = Handler{
 				r.Error = err
 				return
 			}
+			r.HTTPRequest.ContentLength = int64(len(raw))
 			r.HTTPRequest.Body = ioutil.NopCloser(bytes.NewReader(raw))
 		}
 	},
