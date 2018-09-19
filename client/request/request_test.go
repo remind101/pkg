@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"testing"
 
 	"github.com/remind101/pkg/client/metadata"
@@ -33,7 +34,11 @@ func newTestRequest(method string, path string, params interface{}, data interfa
 
 func TestRequestDefaults(t *testing.T) {
 	var data JSONdata
-	r := newTestRequest("POST", "/foo", JSONparams{Param: "hello"}, &data)
+	params := JSONparams{Param: "hello"}
+	r := newTestRequest("POST", "/foo", params, &data)
+
+	encodedParams, _ := json.Marshal(params)
+	contentLength := strconv.Itoa(len(encodedParams))
 
 	sendRequest(r, http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		// Verify JSON headers.
@@ -41,6 +46,9 @@ func TestRequestDefaults(t *testing.T) {
 			t.Errorf("got %s; expected %s", got, want)
 		}
 		if got, want := r.Header.Get("Accept"), "application/json"; got != want {
+			t.Errorf("got %s; expected %s", got, want)
+		}
+		if got, want := r.Header.Get("Content-Length"), contentLength; got != want {
 			t.Errorf("got %s; expected %s", got, want)
 		}
 
