@@ -13,10 +13,10 @@ import (
 	"strconv"
 
 	"github.com/99designs/httpsignatures-go"
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/remind101/pkg/httpx"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
 )
 
 // Handlers represents lists of request handlers for each phase in the request
@@ -172,6 +172,7 @@ var JSONBuilder = Handler{
 				r.Error = err
 				return
 			}
+			r.HTTPRequest.ContentLength = int64(len(raw))
 			r.HTTPRequest.Body = ioutil.NopCloser(bytes.NewReader(raw))
 		}
 	},
