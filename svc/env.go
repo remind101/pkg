@@ -4,15 +4,16 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"os"
 
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/opentracer"
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 	"github.com/opentracing/opentracing-go"
 	"github.com/remind101/pkg/logger"
 	"github.com/remind101/pkg/metrics"
 	"github.com/remind101/pkg/reporter"
 	"github.com/remind101/pkg/reporter/rollbar"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/opentracer"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 // Env holds global dependencies that need to be initialized in main() and
@@ -87,15 +88,34 @@ func InitTracer() func() {
 //
 // Env Vars:
 // * STATSD_ADDR - The host:port of the statsd server.
-func InitMetrics() func() {
-	if addr := os.Getenv("STATSD_ADDR"); addr != "" {
-		metrics.SetEmpireDefaultTags()
-		metrics.Reporter, _ = metrics.NewDataDogMetricsReporter(addr)
-	}
-
-	return func() {
+func InitMetrics() (fn func()) {
+	fn = func() {
 		metrics.Close()
 	}
+
+	addr := os.Getenv("STATSD_ADDR")
+	if addr == "" {
+		return
+	}
+
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return
+	}
+
+	addrs, err := net.LookupHost(host)
+	if err != nil {
+		return
+	}
+
+	if len(addrs) == 0 {
+		return
+	}
+
+	metrics.SetEmpireDefaultTags()
+	metrics.Reporter, _ = metrics.NewDataDogMetricsReporter(net.JoinHostPort(addrs[0], port))
+
+	return
 }
 
 // InitLogger configures a leveled logger.
