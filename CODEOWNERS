@@ -1,5 +1,5 @@
 # These owners will be the default owners for everything in the repo.
-# NOTE: this file auto-generated from github.com/remind101/engineering/sync_github.rb.
+# NOTE: this file auto-generated from github.com/remind101/stacks/bin/codeowners_to_github
 #       Dont edit this directly as it will be overridden :D
 #
 * peterh@remind101.com dave@remind101.com
