@@ -20,7 +20,7 @@ func LoggerWithRequestID(ctx context.Context, r *http.Request) logger.Logger {
 	return logger.DefaultLogger.With("request_id", httpx.RequestID(ctx))
 }
 
-// returns a loggerGenerator that generates a loggers that write to STDOUT
+// StdoutLoggerWithLevel returns a loggerGenerator that generates a loggers that write to STDOUT
 // with the level parsed from the string (eg "info")
 // If the string isnt parsable, it defaults to "debug"
 func StdoutLoggerWithLevel(lvl string) loggerGenerator {

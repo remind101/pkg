@@ -9,7 +9,7 @@ import (
 	"github.com/remind101/pkg/reporter/rollbar"
 )
 
-// Returns a MultiReporter from URL strings such as:
+// NewReporterFromUrls returns a MultiReporter from URL strings such as:
 // "hb://api.honeybadger.io/?key=hbkey&environment=hbenv" or
 // "rollbar://api.rollbar.com/?key=rollbarkey&environment=rollbarenv"
 func NewReporterFromUrls(urls []string) (reporter.Reporter, error) {

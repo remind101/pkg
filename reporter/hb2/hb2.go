@@ -44,7 +44,7 @@ func (r *HbReporter) GetConfig() *honeybadger.Configuration {
 	return r.client.Config
 }
 
-// Report reports the error to honeybadger.
+// ReportWithLevel reports reports the error to honeybadger.
 func (r *HbReporter) ReportWithLevel(ctx context.Context, level string, err error) error {
 	extras := []interface{}{}
 

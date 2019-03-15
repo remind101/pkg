@@ -34,7 +34,7 @@ type flusher interface {
 // ReporterFunc is a function signature that conforms to the Reporter interface.
 type ReporterFunc func(context.Context, string, error) error
 
-// Report implements the Reporter interface.
+// ReportWithLevel reports implements the Reporter interface.
 func (f ReporterFunc) ReportWithLevel(ctx context.Context, level string, err error) error {
 	return f(ctx, level, err)
 }

@@ -122,7 +122,7 @@ func WithVars(ctx context.Context, vars map[string]string) context.Context {
 	return context.WithValue(ctx, varsKey, vars)
 }
 
-// WithVars adds the current Route to the context.Context.
+// WithRoute adds the current Route to the context.Context.
 func WithRoute(ctx context.Context, r *Route) context.Context {
 	return context.WithValue(ctx, routeKey, r)
 }
@@ -182,7 +182,7 @@ func (r *Route) URLPath(pairs ...string) (*url.URL, error) {
 	return r.route.URLPath(pairs...)
 }
 
-// Returns the path template for this route, if any.
+// GetPathTemplate returns the path template for this route, if any.
 func (r *Route) GetPathTemplate() string {
 	return r.pathTpl
 }

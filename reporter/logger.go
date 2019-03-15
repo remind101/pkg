@@ -20,7 +20,7 @@ func NewLogReporter() *LogReporter {
 	return &LogReporter{}
 }
 
-// Report logs the error to the Logger.
+// ReportWithLevel reports logs the error to the Logger.
 func (h *LogReporter) ReportWithLevel(ctx context.Context, level string, err error) error {
 	var file, line string
 	var stack errors.StackTrace

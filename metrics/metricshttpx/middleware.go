@@ -12,7 +12,7 @@ import (
 	"github.com/remind101/pkg/metrics"
 )
 
-// ResponseTimeReporter reports timing metrics using metrics package
+// NewResponseTimeReporter reports timing metrics using metrics package
 //
 // Usage:
 //   r := httpx.NewRouter()
