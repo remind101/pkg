@@ -12,5 +12,5 @@ func ExampleLogger_Log() {
 	l.Info("message", "key", "value")
 
 	// Output:
-	// message key=value
+	// status=info message key=value
 }
