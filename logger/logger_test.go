@@ -55,7 +55,7 @@ func TestWith(t *testing.T) {
 	lw := l.With("request_id", "abc")
 	lw.Info("message", "count", 1)
 
-	if got, want := b.String(), "message request_id=abc count=1\n"; got != want {
+	if got, want := b.String(), "status=info message request_id=abc count=1\n"; got != want {
 		t.Fatalf("With Logger => %q; want %q", got, want)
 	}
 }
@@ -64,7 +64,7 @@ func TestWithContextLogger(t *testing.T) {
 	b := new(bytes.Buffer)
 	l := New(log.New(b, "", 0), INFO)
 	Info(WithLogger(context.Background(), l), "test")
-	if got, want := b.String(), "test \n"; got != want {
+	if got, want := b.String(), "status=info test \n"; got != want {
 		t.Fatalf("Without Context Logger => %q; want %q", got, want)
 	}
 }
@@ -75,7 +75,7 @@ func TestWithoutContextLogger(t *testing.T) {
 	b := new(bytes.Buffer)
 	DefaultLogger = New(log.New(b, "", 0), INFO)
 	Info(context.Background(), "test")
-	if got, want := b.String(), "test \n"; got != want {
+	if got, want := b.String(), "status=info test \n"; got != want {
 		t.Fatalf("Without Context Logger => %q; want %q", got, want)
 	}
 }
