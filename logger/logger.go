@@ -35,6 +35,21 @@ func ParseLevel(lvl string) Level {
 	}
 }
 
+func FormatLevel(level Level) string {
+	switch level {
+	case OFF:
+		return "off"
+	case ERROR:
+		return "error"
+	case INFO:
+		return "info"
+	case DEBUG:
+		return "debug"
+	default:
+		return "debug"
+	}
+}
+
 // Logger represents a structured leveled logger.
 type Logger interface {
 	Debug(msg string, pairs ...interface{})
@@ -78,6 +93,7 @@ func (l *logger) With(pairs ...interface{}) Logger {
 // value pair. Given the input:
 func (l *logger) Log(level Level, msg string, pairs ...interface{}) {
 	if level <= l.Level {
+		msg = "status=" + FormatLevel(level) + " " + msg
 		m := l.message(pairs...)
 		l.Println(msg, m)
 	}
