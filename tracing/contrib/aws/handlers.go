@@ -3,6 +3,7 @@ package aws
 import (
 	"fmt"
 
+	dd_ext "gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -46,7 +47,10 @@ var (
 			}
 
 			if r.Error != nil {
-				span.SetTag("error.error", r.Error)
+				span.SetTag(dd_ext.Error, r.Error)
+				if _, ok := r.Error.(fmt.Formatter); ok {
+					span.SetTag(dd_ext.ErrorStack, fmt.Sprintf("%+v", r.Error))
+				}
 				if err, ok := r.Error.(awserr.Error); ok {
 					span.SetTag("aws.err.code", fmt.Sprintf("%s", err.Code()))
 				}

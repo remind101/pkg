@@ -50,6 +50,9 @@ func (h *OpentracingTracer) ServeHTTPContext(ctx context.Context, w http.Respons
 	reqErr := h.handler.ServeHTTPContext(ctx, rw, r)
 	if reqErr != nil {
 		span.SetTag(dd_ext.Error, reqErr)
+		if _, ok := err.(fmt.Formatter); ok {
+			span.SetTag(dd_ext.ErrorStack, fmt.Sprintf("%+v", err))
+		}
 	}
 	span.SetTag(dd_ext.HTTPCode, rw.Status())
 

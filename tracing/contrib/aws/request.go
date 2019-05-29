@@ -2,7 +2,9 @@ package aws
 
 import (
 	"context"
+	"fmt"
 
+	dd_ext "gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
 	"github.com/aws/aws-sdk-go/aws/request"
 	opentracing "github.com/opentracing/opentracing-go"
 )
@@ -53,6 +55,9 @@ func defaultTags(span opentracing.Span, r *request.Request, err error) {
 	}
 
 	if err != nil {
-		span.SetTag("error.error", err)
+		span.SetTag(dd_ext.Error, err)
+		if _, ok := err.(fmt.Formatter); ok {
+			span.SetTag(dd_ext.ErrorStack, fmt.Sprintf("%+v", err))
+		}
 	}
 }
