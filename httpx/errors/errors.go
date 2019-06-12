@@ -53,6 +53,8 @@ func Recover(ctx context.Context, v interface{}) (e error) {
 		e = nil
 	case error:
 		e = New(ctx, err, 0)
+	case *Error:
+		e = err
 	default:
 		e = New(ctx, fmt.Errorf("%v", err), 0)
 	}
@@ -198,4 +200,46 @@ func stacktrace(err error, skip int) errors.StackTrace {
 		stack = stack[:MaxFrames]
 	}
 	return stack
+}
+
+// Will recover from a panic, and throw the error away.
+//
+// Useful for when you want to test that your panic handling is working
+// correctly. If your test actually throws a panic, it just crashes right
+// there, so you can use this function to ignore the panic.
+//
+// Ex:
+// go func() {
+//   defer errors.IgnorePanic()
+//   defer errors.PushPanicToChannel(errChan)
+//
+//   DoSomethingDangerous()
+// }()
+func IgnorePanic() {
+	recover()
+}
+
+// If there's a panic, this will push the error to the given error channel.
+//
+// Useful when you want to do many things async, and want any error put in
+// a channel. A common mistake is to only handle returned errors, and forget
+// to handle panics as well, leading to errors that look like timeout errors
+// but are actually panics.
+//
+// Ex:
+// go func() {
+//   defer errors.PushPanicToChannel(errChan)
+//
+//   result, err := DoSomethingDangerous()
+//   if err != nil {
+//     errChan <- err
+//   } else {
+//     resultChan <- result
+//   }
+// }()
+func PushPanicToChannel(ctx context.Context, errChan chan error) {
+	if err := Recover(ctx, recover()); err != nil {
+		errChan <- err
+		panic(err)
+	}
 }

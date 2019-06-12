@@ -99,13 +99,16 @@ func reportWithLevel(ctx context.Context, level string, err error) error {
 }
 
 // Monitors and reports panics. Useful in goroutines.
+//
+// Note: this RE-THROWS the panic after logging it
+//
 // Example:
 //   ctx := reporter.WithReporter(context.Background(), hb2.NewReporter(hb2.Config{}))
 //   ...
 //   go func(ctx context.Context) {
 //     defer reporter.Monitor(ctx)
 //     ...
-//     panic("oh noes") // will report, then crash.
+//     panic("oh noes") // will report, then panic with a wrapped error.
 //   }(ctx)
 func Monitor(ctx context.Context) {
 	if err := errors.Recover(ctx, recover()); err != nil {
