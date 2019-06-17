@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/remind101/pkg/httpx/errors"
 )
@@ -131,7 +132,7 @@ func TestPanics(t *testing.T) {
 					t.Error("expected err to not be nil")
 				}
 				e := err.(*errors.Error)
-				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errors_test.go:127"; got != want {
+				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errors_test.go:128"; got != want {
 					t.Errorf("got: %v; expected: %v", got, want)
 				}
 			},
@@ -145,7 +146,7 @@ func TestPanics(t *testing.T) {
 					t.Error("expected err to not be nil")
 				}
 				e := err.(*errors.Error)
-				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errors_test.go:141"; got != want {
+				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errors_test.go:142"; got != want {
 					t.Errorf("got: %v; expected: %v", got, want)
 				}
 			},
@@ -161,7 +162,7 @@ func TestPanics(t *testing.T) {
 					t.Error("expected err to not be nil")
 				}
 				e := err.(*errors.Error)
-				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errors_test.go:157"; got != want {
+				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errors_test.go:158"; got != want {
 					t.Errorf("got: %v; expected: %v", got, want)
 				}
 
@@ -183,4 +184,56 @@ func runPanicTest(pt panicTest) {
 	}()
 
 	pt.Fn()
+}
+
+type pushPanicToChannelTest struct {
+	Fn     func(chan error)
+	TestFn func(error)
+}
+
+func TestPushPanicToChannel(t *testing.T) {
+	tests := []pushPanicToChannelTest{
+		{
+			Fn: func(errChan chan error) {
+				panic("Aaaaaaa!")
+			},
+			TestFn: func(err error) {
+				if err == nil || err.Error() != "Timeout" {
+					t.Fatal("This should timeout without PushPanicToChannel")
+				}
+			},
+		},
+		{
+			Fn: func(errChan chan error) {
+				defer errors.PushPanicToChannel(context.Background(), errChan)
+				panic("Aaaaaaa!")
+			},
+			TestFn: func(err error) {
+				if err == nil {
+					t.Fatal("Error should not be nil")
+				}
+				if err.Error() == "Timeout" {
+					t.Fatal("PushPanicToChannel Didn't stop error")
+				}
+			},
+		},
+	}
+	for _, tt := range tests {
+		runPushPanicToChannelTest(tt)
+	}
+}
+
+func runPushPanicToChannelTest(test pushPanicToChannelTest) {
+	errChan := make(chan error)
+	go func() {
+		defer errors.IgnorePanic()
+		test.Fn(errChan)
+	}()
+
+	select {
+	case err := <-errChan:
+		test.TestFn(err)
+	case <-time.After(10 * time.Millisecond):
+		test.TestFn(fmt.Errorf("Timeout"))
+	}
 }
