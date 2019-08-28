@@ -47,6 +47,10 @@ func TestLogLevel(t *testing.T) {
 	if got, want := b.String(), ""; got != want {
 		t.Fatalf("ontext Logger => %q; want %q", got, want)
 	}
+	Warn(WithLogger(context.Background(), l), "test info")
+	if got, want := b.String(), "status=warn test info \n"; got != want {
+		t.Fatalf("ontext Logger => %q; want %q", got, want)
+	}
 }
 
 func TestWith(t *testing.T) {

@@ -59,6 +59,7 @@ func FormatLevel(level Level) string {
 type Logger interface {
 	Debug(msg string, pairs ...interface{})
 	Info(msg string, pairs ...interface{})
+	Warn(msg string, pairs ...interface{})
 	Error(msg string, pairs ...interface{})
 	With(pairs ...interface{}) Logger
 }
@@ -107,6 +108,7 @@ func (l *logger) Log(level Level, msg string, pairs ...interface{}) {
 func (l *logger) Debug(msg string, pairs ...interface{}) { l.Log(DEBUG, msg, pairs...) }
 func (l *logger) Info(msg string, pairs ...interface{})  { l.Log(INFO, msg, pairs...) }
 func (l *logger) Error(msg string, pairs ...interface{}) { l.Log(ERROR, msg, pairs...) }
+func (l *logger) Warn(msg string, pairs ...interface{})  { l.Log(WARN, msg, pairs...) }
 
 func (l *logger) message(pairs ...interface{}) string {
 	pairs = append(l.ctxPairs, pairs...)
@@ -157,6 +159,12 @@ func Info(ctx context.Context, msg string, pairs ...interface{}) {
 func Debug(ctx context.Context, msg string, pairs ...interface{}) {
 	withLogger(ctx, func(l Logger) {
 		l.Debug(msg, pairs...)
+	})
+}
+
+func Warn(ctx context.Context, msg string, pairs ...interface{}) {
+	withLogger(ctx, func(l Logger) {
+		l.Warn(msg, pairs...)
 	})
 }
 
