@@ -44,6 +44,8 @@ func FormatLevel(level Level) string {
 		return "off"
 	case ERROR:
 		return "error"
+	case WARN:
+		return "warn"
 	case INFO:
 		return "info"
 	case DEBUG:
