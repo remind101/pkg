@@ -16,6 +16,7 @@ type Level int
 const (
 	OFF Level = iota
 	ERROR
+	WARN
 	INFO
 	DEBUG
 )
@@ -26,6 +27,8 @@ func ParseLevel(lvl string) Level {
 		return OFF
 	case "error":
 		return ERROR
+	case "warn":
+		return WARN
 	case "info":
 		return INFO
 	case "debug":
