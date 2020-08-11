@@ -186,13 +186,22 @@ var JSONDecoder = Handler{
 			return
 		}
 		if r.HTTPResponse.Body != nil {
-			defer r.HTTPResponse.Body.Close()
+			defer func() {
+				// Read the entire body, including any trailing garbage, so
+				// this connection is in a good state for reuse.
+				io.Copy(ioutil.Discard, r.HTTPResponse.Body)
+				r.HTTPResponse.Body.Close()
+			}()
 		}
 		if r.Data == nil {
-			_, r.Error = io.Copy(ioutil.Discard, r.HTTPResponse.Body)
 			return
 		}
-		r.Error = json.NewDecoder(r.HTTPResponse.Body).Decode(r.Data)
+		decoder := json.NewDecoder(r.HTTPResponse.Body)
+		r.Error = decoder.Decode(r.Data)
+
+		if decoder.More() && r.Error == nil {
+			r.Error = fmt.Errorf("Response includes more than one JSON object")
+		}
 	},
 }
 
