@@ -40,9 +40,10 @@ func TestRecovery(t *testing.T) {
 
 	ctx := context.Background()
 	req, _ := http.NewRequest("GET", "/", nil)
+	req.Header.Set("X-Request-ID", "1234")
 	resp := httptest.NewRecorder()
 
-	ctx = httpx.WithRequestID(ctx, "1234")
+	ctx = httpx.WithRequest(ctx, req)
 
 	defer func() {
 		if err := recover(); err != nil {

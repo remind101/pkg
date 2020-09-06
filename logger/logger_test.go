@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"log"
 	"testing"
-
-	"golang.org/x/net/context"
 )
 
 func TestLogger(t *testing.T) {
@@ -36,24 +34,4 @@ func testInfo(msg string, pairs ...interface{}) string {
 	l := New(log.New(b, "", 0))
 	l.Info(msg, pairs...)
 	return b.String()
-}
-
-func TestWithContextLogger(t *testing.T) {
-	b := new(bytes.Buffer)
-	l := New(log.New(b, "", 0))
-	Info(WithLogger(context.Background(), l), "test")
-	if got, want := b.String(), "test \n"; got != want {
-		t.Fatalf("Without Context Logger => %q; want %q", got, want)
-	}
-}
-
-func TestWithoutContextLogger(t *testing.T) {
-	origFallBackLogger := DefaultLogger
-	defer func() { DefaultLogger = origFallBackLogger }()
-	b := new(bytes.Buffer)
-	DefaultLogger = New(log.New(b, "", 0))
-	Info(context.Background(), "test")
-	if got, want := b.String(), "test \n"; got != want {
-		t.Fatalf("Without Context Logger => %q; want %q", got, want)
-	}
 }

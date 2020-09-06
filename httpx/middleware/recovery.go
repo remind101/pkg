@@ -39,14 +39,14 @@ func (h *Recovery) ServeHTTPContext(ctx context.Context, w http.ResponseWriter, 
 
 	defer func() {
 		if v := recover(); v != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			err = fmt.Errorf("%v", v)
 
-			var ok bool
-			if err, ok = v.(error); !ok {
-				err = fmt.Errorf("%v", v)
+			if v, ok := v.(error); ok {
+				err = v
 			}
 
 			reporter.Report(ctx, err)
+
 			return
 		}
 	}()
