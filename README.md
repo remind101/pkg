@@ -50,6 +50,13 @@ http servers with logging, distributed tracing, error reporting and metrics out 
 
 Use instead of time.Now to allow easy stubbing in tests.
 
+### [profiling](./profiling)
+
+Lightweight convenience stuff around
+[pprof](https://golang.org/pkg/runtime/pprof/) and
+[Google Cloud Profiler](https://cloud.google.com/profiler/docs) for visibility
+into all our apps.
+
 ## Usage
 
 For examples of usage, see the **[example](./example)** directory.
