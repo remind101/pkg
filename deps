@@ -1,2 +1,0 @@
-gopkg.in/DataDog/dd-trace-go.v1/ddtrace v1.2.2
-github.com/go-redis/redis v6.15.2
