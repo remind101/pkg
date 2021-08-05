@@ -114,7 +114,7 @@ func parseInt(s string) int {
 func getContextData(err util.Contexter) []*rollbar.Field {
 	fields := []*rollbar.Field{}
 	for key, value := range err.ContextData() {
-		fields = append(fields, &rollbar.Field{key, value})
+		fields = append(fields, &rollbar.Field{Name: key, Data: value})
 	}
 	return fields
 }
