@@ -31,6 +31,10 @@ func (c *DataDogMetricsReporter) Histogram(name string, value float64, tags map[
 	return c.client.Histogram(name, value, convertTags(tags), rate)
 }
 
+func (c *DataDogMetricsReporter) Distribution(name string, value float64, tags map[string]string, rate float64) error {
+	return c.client.Distribution(name, value, convertTags(tags), rate)
+}
+
 func (c *DataDogMetricsReporter) Set(name string, value string, tags map[string]string, rate float64) error {
 	return c.client.Set(name, value, convertTags(tags), rate)
 }

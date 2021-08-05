@@ -41,6 +41,10 @@ func (r *fakeMetricsReporter) Histogram(name string, value float64, tags map[str
 	return nil
 }
 
+func (r *fakeMetricsReporter) Distribution(name string, value float64, tags map[string]string, rate float64) error {
+	return nil
+}
+
 func (r *fakeMetricsReporter) Set(name string, value string, tags map[string]string, rate float64) error {
 	return nil
 }
