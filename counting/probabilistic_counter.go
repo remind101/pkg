@@ -5,7 +5,7 @@ import (
 	"math"
 
 	"github.com/pkg/errors"
-	"github.com/willf/bitset"
+	"github.com/bits-and-blooms/bitset"
 )
 
 // ProbabilisticCounter implements an a linear-time counting algorithm, also known as "linear counting".
