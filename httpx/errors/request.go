@@ -75,9 +75,7 @@ func copyStringArray(values []string) []string {
 		return nil
 	}
 	safeArray := make([]string, len(values))
-	for idx, value := range values {
-		safeArray[idx] = value
-	}
+	copy(safeArray, values)
 	return safeArray
 }
 

@@ -1,4 +1,4 @@
-package errors_test
+package errors
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/remind101/pkg/httpx/errors"
+	"github.com/stretchr/testify/assert"
 )
 
 var errBoom = gerrors.New("boom")
@@ -18,9 +18,9 @@ var errBoom = gerrors.New("boom")
 func TestNew(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/", nil)
 	req.Header.Set("Content-Type", "application/json")
-	ctx := errors.WithRequest(context.Background(), req)
-	ctx = errors.WithInfo(ctx, "foo", "bar")
-	e := errors.New(ctx, errBoom, 0)
+	ctx := WithRequest(context.Background(), req)
+	ctx = WithInfo(ctx, "foo", "bar")
+	e := New(ctx, errBoom, 0)
 	r := e.Request()
 
 	if r.Header.Get("Content-Type") != "application/json" {
@@ -47,8 +47,8 @@ func TestWithSensitiveData(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "this-is-a-secret")
 	req.Header.Set("Cookie", "r101_auth_token=this-is-sensitive")
-	ctx := errors.WithRequest(context.Background(), req)
-	e := errors.New(ctx, errBoom, 0)
+	ctx := WithRequest(context.Background(), req)
+	e := New(ctx, errBoom, 0)
 	r := e.Request()
 
 	if r.URL.Scheme != "http" {
@@ -91,8 +91,8 @@ func TestWithFormData(t *testing.T) {
 	req.Form.Add("key", "foo")
 	req.Form.Add("username", "admin")
 	req.Form.Add("password", "this-is-a-secret")
-	ctx := errors.WithRequest(context.Background(), req)
-	e := errors.New(ctx, errBoom, 0)
+	ctx := WithRequest(context.Background(), req)
+	e := New(ctx, errBoom, 0)
 	r := e.Request()
 
 	if r.Form.Get("key") != "foo" {
@@ -131,7 +131,7 @@ func TestPanics(t *testing.T) {
 				if err == nil {
 					t.Error("expected err to not be nil")
 				}
-				e := err.(*errors.Error)
+				e := err.(*Error)
 				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errors_test.go:128"; got != want {
 					t.Errorf("got: %v; expected: %v", got, want)
 				}
@@ -145,7 +145,7 @@ func TestPanics(t *testing.T) {
 				if err == nil {
 					t.Error("expected err to not be nil")
 				}
-				e := err.(*errors.Error)
+				e := err.(*Error)
 				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errors_test.go:142"; got != want {
 					t.Errorf("got: %v; expected: %v", got, want)
 				}
@@ -154,14 +154,14 @@ func TestPanics(t *testing.T) {
 		{
 			Fn: func() {
 				ctx := context.Background()
-				ctx = errors.WithInfo(ctx, "request_id", "1234")
-				panic(errors.New(ctx, gerrors.New("boom"), 0))
+				ctx = WithInfo(ctx, "request_id", "1234")
+				panic(New(ctx, gerrors.New("boom"), 0))
 			},
 			TestFn: func(err error) {
 				if err == nil {
 					t.Error("expected err to not be nil")
 				}
-				e := err.(*errors.Error)
+				e := err.(*Error)
 				if got, want := fmt.Sprintf("%v", e.StackTrace()[0]), "errors_test.go:158"; got != want {
 					t.Errorf("got: %v; expected: %v", got, want)
 				}
@@ -179,7 +179,7 @@ func TestPanics(t *testing.T) {
 
 func runPanicTest(pt panicTest) {
 	defer func() {
-		err := errors.Recover(context.Background(), recover())
+		err := Recover(context.Background(), recover())
 		pt.TestFn(err)
 	}()
 
@@ -205,7 +205,7 @@ func TestPushPanicToChannel(t *testing.T) {
 		},
 		{
 			Fn: func(errChan chan error) {
-				defer errors.PushPanicToChannel(context.Background(), errChan)
+				defer PushPanicToChannel(context.Background(), errChan)
 				panic("Aaaaaaa!")
 			},
 			TestFn: func(err error) {
@@ -226,7 +226,7 @@ func TestPushPanicToChannel(t *testing.T) {
 func runPushPanicToChannelTest(test pushPanicToChannelTest) {
 	errChan := make(chan error)
 	go func() {
-		defer errors.IgnorePanic()
+		defer IgnorePanic()
 		test.Fn(errChan)
 	}()
 
@@ -236,4 +236,12 @@ func runPushPanicToChannelTest(test pushPanicToChannelTest) {
 	case <-time.After(10 * time.Millisecond):
 		test.TestFn(fmt.Errorf("Timeout"))
 	}
+}
+
+func TestStackErrors(t *testing.T) {
+	assert.Len(t, genStacktrace(gerrors.New("no stack"), 0), 3, "expected stack of 3")
+	assert.Len(t, genStacktrace(gerrors.New("no stack"), 2), 1, "expected to skip to the last stack")
+	assert.PanicsWithValue(t, "attempt to skip past more frames than are present in the stack", func() {
+		genStacktrace(gerrors.New("no stack"), 100)
+	}, "expected a panic when we are at the limit of the stack frames for skips")
 }

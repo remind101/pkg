@@ -59,7 +59,7 @@ func TestStandardHandler(t *testing.T) {
 			},
 			StatusCode: 503,
 			Body:       `{"error":"http: handler timeout"}` + "\n",
-			ErrFrame:   "timeout.go:100",
+			ErrFrame:   "timeout.go:103",
 		},
 	}
 
