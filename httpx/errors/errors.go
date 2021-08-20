@@ -51,10 +51,10 @@ func Recover(ctx context.Context, v interface{}) (e error) {
 	switch err := v.(type) {
 	case nil:
 		e = nil
-	case error:
-		e = New(ctx, err, 0)
 	case *Error:
 		e = err
+	case error:
+		e = New(ctx, err, 0)
 	default:
 		e = New(ctx, fmt.Errorf("%v", err), 0)
 	}
@@ -157,6 +157,9 @@ func genStacktrace(err error, skip int) errors.StackTrace {
 			skip = index + 1
 			break
 		}
+	}
+	if skip >= len(stack) {
+		panic("attempt to skip past more frames than are present in the stack")
 	}
 
 	return stack[skip:]

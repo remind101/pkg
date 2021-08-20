@@ -32,18 +32,21 @@ func TimeoutHandler(h httpx.Handler, dt time.Duration) httpx.Handler {
 	}
 }
 
-type handlerTimeout string
+type handlerTimeout struct {
+	message string
+}
 
 func (e handlerTimeout) Timeout() bool {
 	return true
 }
+
 func (e handlerTimeout) Error() string {
-	return string(e)
+	return e.message
 }
 
 // ErrHandlerTimeout is returned on ResponseWriter Write calls
 // in handlers which have timed out.
-var ErrHandlerTimeout = handlerTimeout("http: handler timeout")
+var ErrHandlerTimeout = &handlerTimeout{"http: handler timeout"}
 
 type timeoutHandler struct {
 	handler httpx.Handler
