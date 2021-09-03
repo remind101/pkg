@@ -13,7 +13,7 @@ import (
 
 	"github.com/remind101/pkg/httpx/errors"
 	"github.com/remind101/pkg/reporter"
-	"github.com/stvp/rollbar"
+	"github.com/rollbar/rollbar-go"
 )
 
 func TestIsAReporter(t *testing.T) {
@@ -42,7 +42,7 @@ func TestReportsThingsToRollbar(t *testing.T) {
 	err := errors.New(ctx, boom, 0)
 
 	ConfigureReporter("token", "test")
-	rollbar.Endpoint = ts.URL + "/"
+	rollbar.SetEndpoint(ts.URL + "/")
 	fmt.Println(ts.URL)
 	ctx = reporter.WithReporter(ctx, Reporter)
 	reporter.Report(ctx, err)

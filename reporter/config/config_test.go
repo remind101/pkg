@@ -5,7 +5,7 @@ import (
 
 	"github.com/remind101/pkg/reporter"
 	"github.com/remind101/pkg/reporter/hb2"
-	"github.com/stvp/rollbar"
+	"github.com/rollbar/rollbar-go"
 )
 
 func TestNewReporterFromConfigString(t *testing.T) {
@@ -31,10 +31,10 @@ func TestNewReporterFromConfigString(t *testing.T) {
 		t.Errorf("got %#v, but wanted %#v", got, want)
 	}
 
-	if got, want := rollbar.Token, "rollbarkey"; got != want {
+	if got, want := rollbar.Token(), "rollbarkey"; got != want {
 		t.Errorf("got %#v, but wanted %#v", got, want)
 	}
-	if got, want := rollbar.Environment, "rollbarenv"; got != want {
+	if got, want := rollbar.Environment(), "rollbarenv"; got != want {
 		t.Errorf("got %#v, but wanted %#v", got, want)
 	}
 }

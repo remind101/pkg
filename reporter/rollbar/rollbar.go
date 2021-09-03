@@ -1,16 +1,14 @@
 package rollbar
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"strconv"
 
 	"context"
 
-	"github.com/pkg/errors"
 	"github.com/remind101/pkg/reporter/util"
-	"github.com/stvp/rollbar"
+	"github.com/rollbar/rollbar-go"
 )
 
 const ErrorLevel = "error"
@@ -21,53 +19,54 @@ const (
 	EnvEndpoint    = "ROLLBAR_ENDPOINT"
 )
 
+// TODO (sophied): A type temporarily stolen from github.com/stvp/rollbar
+// to allow us to migrate all the places that use this reporting package
+// away from a custom stack trace type before we switch over to go's default
+// error type across the board.
+type Frame struct {
+	Filename string `json:"filename"`
+	Method   string `json:"method"`
+	Line     int    `json:"lineno"`
+}
+
 type rollbarReporter struct{}
 
-// The stvp/rollbar package is implemented as a global, so let's not fool our
-// callers by generating an instance of a reporter. Rollbar config is actually
-// global, so we'll have the Rollbar reporter be a global too.
 var Reporter = &rollbarReporter{}
 
 func ConfigureReporter(token, environment string) {
-	rollbar.Token = token
-	rollbar.Environment = environment
+	rollbar.SetToken(token)
+	rollbar.SetEnvironment(environment)
 }
 
 func ConfigureFromEnvironment() {
 	if token := os.Getenv(EnvAccessToken); token != "" {
-		rollbar.Token = token
+		rollbar.SetToken(token)
 	}
 	if env := os.Getenv(EnvEnvironment); env != "" {
-		rollbar.Environment = env
+		rollbar.SetEnvironment(env)
 	}
-
 	if endpoint := os.Getenv(EnvEndpoint); endpoint != "" {
-		rollbar.Endpoint = endpoint
+		rollbar.SetEndpoint(endpoint)
 	}
 }
 
 func (r *rollbarReporter) ReportWithLevel(ctx context.Context, level string, err error) error {
 	var request *http.Request
-	extraFields := []*rollbar.Field{}
-	var stackTrace rollbar.Stack = nil
+	var extraFields map[string]interface{}
 
 	if e, ok := err.(util.Contexter); ok {
-		extraFields = getContextData(e)
+		extraFields = e.ContextData()
 	}
 
 	if e, ok := err.(util.Requester); ok {
 		request = e.Request()
 	}
 
-	if e, ok := err.(util.StackTracer); ok {
-		stackTrace = makeRollbarStack(e.StackTrace())
-	}
-
 	if e, ok := err.(util.Causer); ok {
 		err = e.Cause() // Report the actual cause of the error.
 	}
 
-	reportToRollbar(level, request, err, stackTrace, extraFields)
+	reportToRollbar(level, request, err, extraFields)
 	return nil
 }
 
@@ -75,46 +74,15 @@ func (r *rollbarReporter) Flush() {
 	rollbar.Wait()
 }
 
-func reportToRollbar(level string, request *http.Request, err error, stack rollbar.Stack, extraFields []*rollbar.Field) {
+func reportToRollbar(level string, request *http.Request, err error, extraFields map[string]interface{}) {
 	if request != nil {
-		if stack != nil {
-			rollbar.RequestErrorWithStack(level, request, err, stack, extraFields...)
-		} else {
-			rollbar.RequestError(level, request, err, extraFields...)
-		}
+		rollbar.Error(level, request, err, extraFields)
 	} else {
-		if stack != nil {
-			rollbar.ErrorWithStack(level, err, stack, extraFields...)
-		} else {
-			rollbar.Error(level, err, extraFields...)
-		}
+		rollbar.Error(level, err, extraFields)
 	}
-}
-
-func makeRollbarStack(stack errors.StackTrace) rollbar.Stack {
-	length := len(stack)
-	rollbarStack := make(rollbar.Stack, length)
-	for index, frame := range stack[:length] {
-		// Rollbar's website has a "most recent call last" header. We need to
-		// reverse the order of the stack frames we send it, so our stack traces
-		// are shown in that order.
-		rollbarStack[length-index-1] = rollbar.Frame{
-			Line:     parseInt(fmt.Sprintf("%d", frame)),
-			Filename: fmt.Sprintf("%s", frame),
-			Method:   fmt.Sprintf("%n", frame)}
-	}
-	return rollbarStack
 }
 
 func parseInt(s string) int {
 	i, _ := strconv.Atoi(s)
 	return i
-}
-
-func getContextData(err util.Contexter) []*rollbar.Field {
-	fields := []*rollbar.Field{}
-	for key, value := range err.ContextData() {
-		fields = append(fields, &rollbar.Field{Name: key, Data: value})
-	}
-	return fields
 }
