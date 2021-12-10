@@ -23,9 +23,9 @@ require (
 	github.com/philhofer/fwd v1.1.1 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/remind101/newrelic v0.0.0-20161025005755-2671e3bb51df
+	github.com/rollbar/rollbar-go v1.4.1
 	github.com/shirou/gopsutil v3.21.7+incompatible
 	github.com/stretchr/testify v1.7.0
-	github.com/stvp/rollbar v0.5.1
 	github.com/urfave/cli v1.22.5
 	gopkg.in/DataDog/dd-trace-go.v1 v1.31.1
 )
