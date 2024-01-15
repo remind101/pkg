@@ -12,9 +12,9 @@ import (
 	"net/url"
 	"strconv"
 
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
-	"github.com/garyburd/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 	"github.com/opentracing/opentracing-go"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
 )
 
 // DialURL connects to a Redis server at the given URL using the Redis
@@ -89,7 +89,7 @@ func (tc Conn) Do(commandName string, args ...interface{}) (reply interface{}, e
 		span.SetTag(ext.ResourceName, commandName)
 	} else {
 		// When the command argument to the Do method is "", then the Do method will flush the output buffer
-		// See https://godoc.org/github.com/garyburd/redigo/redis#hdr-Pipelining
+		// See https://pkg.go.dev/github.com/gomodule/redigo/redis#hdr-Pipelining
 		span.SetTag(ext.ResourceName, "conn.flush")
 	}
 	var b bytes.Buffer

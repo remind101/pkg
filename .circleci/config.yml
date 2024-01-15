@@ -4,13 +4,20 @@ workflows:
   main:
     jobs:
       - build-and-test
-
+      - govulncheck
 
 jobs:
   build-and-test:
     docker:
-      - image: circleci/golang:1.16
+      - image: cimg/go:1.21.5
     steps:
       - checkout
       - run: go vet ./...
       - run: go test ./...
+  govulncheck:
+    docker:
+      - image: cimg/go:1.21.5
+    steps:
+      - checkout
+      - run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - run: govulncheck ./...
