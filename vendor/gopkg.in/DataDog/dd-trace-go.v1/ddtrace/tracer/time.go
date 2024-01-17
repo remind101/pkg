@@ -3,13 +3,15 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016 Datadog, Inc.
 
+//go:build !windows
 // +build !windows
 
 package tracer
 
 import "time"
 
-// now returns current UTC time in nanos.
-func now() int64 {
-	return time.Now().UTC().UnixNano()
-}
+// nowTime returns the current time, as computed by Time.Now().
+var nowTime = func() time.Time { return time.Now() }
+
+// now returns the current UNIX time in nanoseconds, as computed by Time.UnixNano().
+var now = func() int64 { return time.Now().UnixNano() }

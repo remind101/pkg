@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -33,6 +34,7 @@ type baseTransport struct {
 
 	perMinCounter int
 	startTime     time.Time
+	lock          sync.RWMutex
 }
 
 // SetToken updates the token to use for future API requests.
@@ -47,12 +49,16 @@ func (t *baseTransport) SetEndpoint(endpoint string) {
 
 // SetItemsPerMinute sets the max number of items to send in a given minute
 func (t *baseTransport) SetItemsPerMinute(itemsPerMinute int) {
+	t.lock.Lock()
 	t.ItemsPerMinute = itemsPerMinute
+	t.lock.Unlock()
 }
 
 // SetLogger updates the logger that this transport uses for reporting errors that occur while
 // processing items.
 func (t *baseTransport) SetLogger(logger ClientLogger) {
+	t.lock.Lock()
+	defer t.lock.Unlock()
 	t.Logger = logger
 }
 
@@ -83,12 +89,24 @@ func (t *baseTransport) getHTTPClient() *http.Client {
 	return http.DefaultClient
 }
 
+func (t *baseTransport) clientPost(body io.Reader) (resp *http.Response, err error) {
+	req, err := http.NewRequest("POST", t.Endpoint, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Rollbar-Access-Token", t.Token)
+	return t.getHTTPClient().Do(req)
+}
+
 // post returns an error which indicates the type of error that occurred while attempting to
 // send the body input to the endpoint given, or nil if no error occurred. If error is not nil, the
 // boolean return parameter indicates whether the error is temporary or not. If this boolean return
 // value is true then the caller could call this function again with the same input and possibly
 // see a non-error response.
 func (t *baseTransport) post(body map[string]interface{}) (bool, error) {
+	t.lock.RLock()
+	defer t.lock.RUnlock()
 	if len(t.Token) == 0 {
 		rollbarError(t.Logger, "empty token")
 		return false, nil
@@ -100,7 +118,7 @@ func (t *baseTransport) post(body map[string]interface{}) (bool, error) {
 		return false, err
 	}
 
-	resp, err := t.getHTTPClient().Post(t.Endpoint, "application/json", bytes.NewReader(jsonBody))
+	resp, err := t.clientPost(bytes.NewReader(jsonBody))
 	if err != nil {
 		rollbarError(t.Logger, "POST failed: %s", err.Error())
 		return isTemporary(err), err
@@ -120,6 +138,8 @@ func (t *baseTransport) post(body map[string]interface{}) (bool, error) {
 }
 
 func (t *baseTransport) shouldSend() bool {
+	t.lock.RLock()
+	defer t.lock.RUnlock()
 	if t.ItemsPerMinute > 0 && t.perMinCounter >= t.ItemsPerMinute {
 		rollbarError(t.Logger, fmt.Sprintf("item per minute limit reached: %d occurences, "+
 			"ignoring errors until timeout", t.perMinCounter))

@@ -11,6 +11,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"runtime"
 	"strconv"
@@ -31,17 +32,19 @@ const (
 	headerComputedTopLevel = "Datadog-Client-Computed-Top-Level"
 )
 
+var defaultDialer = &net.Dialer{
+	Timeout:   30 * time.Second,
+	KeepAlive: 30 * time.Second,
+	DualStack: true,
+}
+
 var defaultClient = &http.Client{
 	// We copy the transport to avoid using the default one, as it might be
 	// augmented with tracing and we don't want these calls to be recorded.
 	// See https://golang.org/pkg/net/http/#DefaultTransport .
 	Transport: &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-			DualStack: true,
-		}).DialContext,
+		Proxy:                 http.ProxyFromEnvironment,
+		DialContext:           defaultDialer.DialContext,
 		MaxIdleConns:          100,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
@@ -54,6 +57,7 @@ const (
 	defaultHostname    = "localhost"
 	defaultPort        = "8126"
 	defaultAddress     = defaultHostname + ":" + defaultPort
+	defaultURL         = "http://" + defaultAddress
 	defaultHTTPTimeout = 2 * time.Second         // defines the current timeout before giving up with the send process
 	traceCountHeader   = "X-Datadog-Trace-Count" // header containing the number of traces in the payload
 )
@@ -77,19 +81,13 @@ type httpTransport struct {
 }
 
 // newTransport returns a new Transport implementation that sends traces to a
-// trace agent running on the given hostname and port, using a given
-// *http.Client. If the zero values for hostname and port are provided,
-// the default values will be used ("localhost" for hostname, and "8126" for
-// port). If client is nil, a default is used.
+// trace agent at the given url, using a given *http.Client.
 //
 // In general, using this method is only necessary if you have a trace agent
 // running on a non-default port, if it's located on another machine, or when
 // otherwise needing to customize the transport layer, for instance when using
 // a unix domain socket.
-func newHTTPTransport(addr string, client *http.Client) *httpTransport {
-	if client == nil {
-		client = defaultClient
-	}
+func newHTTPTransport(url string, client *http.Client) *httpTransport {
 	// initialize the default EncoderPool with Encoder headers
 	defaultHeaders := map[string]string{
 		"Datadog-Meta-Lang":             "go",
@@ -102,8 +100,8 @@ func newHTTPTransport(addr string, client *http.Client) *httpTransport {
 		defaultHeaders["Datadog-Container-ID"] = cid
 	}
 	return &httpTransport{
-		traceURL: fmt.Sprintf("http://%s/v0.4/traces", resolveAddr(addr)),
-		statsURL: fmt.Sprintf("http://%s/v0.6/stats", resolveAddr(addr)),
+		traceURL: fmt.Sprintf("%s/v0.4/traces", url),
+		statsURL: fmt.Sprintf("%s/v0.6/stats", url),
 		client:   client,
 		headers:  defaultHeaders,
 	}
@@ -149,13 +147,15 @@ func (t *httpTransport) send(p *payload) (body io.ReadCloser, err error) {
 	req.Header.Set("Content-Length", strconv.Itoa(p.size()))
 	req.Header.Set(headerComputedTopLevel, "yes")
 	if t, ok := traceinternal.GetGlobalTracer().(*tracer); ok {
-		if t.features.Load().Stats {
+		if t.config.canComputeStats() {
 			req.Header.Set("Datadog-Client-Computed-Stats", "yes")
 		}
-		droppedTraces := int(atomic.SwapUint64(&t.droppedP0Traces, 0))
-		droppedSpans := int(atomic.SwapUint64(&t.droppedP0Spans, 0))
-		if stats := t.config.statsd; stats != nil {
-			stats.Count("datadog.tracer.dropped_p0_traces", int64(droppedTraces), nil, 1)
+		droppedTraces := int(atomic.SwapUint32(&t.droppedP0Traces, 0))
+		partialTraces := int(atomic.SwapUint32(&t.partialTraces, 0))
+		droppedSpans := int(atomic.SwapUint32(&t.droppedP0Spans, 0))
+		if stats := t.statsd; stats != nil {
+			stats.Count("datadog.tracer.dropped_p0_traces", int64(droppedTraces),
+				[]string{fmt.Sprintf("partial:%s", strconv.FormatBool(partialTraces > 0))}, 1)
 			stats.Count("datadog.tracer.dropped_p0_spans", int64(droppedSpans), nil, 1)
 		}
 		req.Header.Set("Datadog-Client-Dropped-P0-Traces", strconv.Itoa(droppedTraces))
@@ -165,7 +165,6 @@ func (t *httpTransport) send(p *payload) (body io.ReadCloser, err error) {
 	if err != nil {
 		return nil, err
 	}
-	p.waitClose()
 	if code := response.StatusCode; code >= 400 {
 		// error, check the body for context information and
 		// return a nice error.
@@ -185,14 +184,22 @@ func (t *httpTransport) endpoint() string {
 	return t.traceURL
 }
 
-// resolveAddr resolves the given agent address and fills in any missing host
+// resolveAgentAddr resolves the given agent address and fills in any missing host
 // and port using the defaults. Some environment variable settings will
 // take precedence over configuration.
-func resolveAddr(addr string) string {
-	host, port, err := net.SplitHostPort(addr)
-	if err != nil {
-		// no port in addr
-		host = addr
+func resolveAgentAddr() *url.URL {
+	var host, port string
+	if v := os.Getenv("DD_AGENT_HOST"); v != "" {
+		host = v
+	}
+	if v := os.Getenv("DD_TRACE_AGENT_PORT"); v != "" {
+		port = v
+	}
+	if _, err := os.Stat(defaultSocketAPM); host == "" && port == "" && err == nil {
+		return &url.URL{
+			Scheme: "unix",
+			Path:   defaultSocketAPM,
+		}
 	}
 	if host == "" {
 		host = defaultHostname
@@ -200,11 +207,8 @@ func resolveAddr(addr string) string {
 	if port == "" {
 		port = defaultPort
 	}
-	if v := os.Getenv("DD_AGENT_HOST"); v != "" {
-		host = v
+	return &url.URL{
+		Scheme: "http",
+		Host:   fmt.Sprintf("%s:%s", host, port),
 	}
-	if v := os.Getenv("DD_TRACE_AGENT_PORT"); v != "" {
-		port = v
-	}
-	return fmt.Sprintf("%s:%s", host, port)
 }

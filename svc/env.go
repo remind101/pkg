@@ -6,13 +6,13 @@ import (
 	"log"
 	"os"
 
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/opentracer"
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 	"github.com/opentracing/opentracing-go"
 	"github.com/remind101/pkg/logger"
 	"github.com/remind101/pkg/metrics"
 	"github.com/remind101/pkg/reporter"
 	"github.com/remind101/pkg/reporter/rollbar"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/opentracer"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 // Env holds global dependencies that need to be initialized in main() and
@@ -63,7 +63,7 @@ func InitAll() Env {
 func InitTracer() func() {
 	var opts []tracer.StartOption
 	// create a Tracer configuration
-	opts = append(opts, tracer.WithServiceName(fmt.Sprintf(
+	opts = append(opts, tracer.WithService(fmt.Sprintf(
 		"%s.%s",
 		os.Getenv("EMPIRE_APPNAME"),
 		os.Getenv("EMPIRE_PROCESS"))))
