@@ -2,21 +2,21 @@
 //
 // Adding request information
 //
-//     var ctx context.Context
-//     var req *http.Request
-//     ctx = errors.WithRequest(ctx, req)
+//	var ctx context.Context
+//	var req *http.Request
+//	ctx = errors.WithRequest(ctx, req)
 //
 // Adding contextual information
 //
-//     ctx = errors.WithInfo(ctx, "X-Request-ID", "123")
+//	ctx = errors.WithInfo(ctx, "X-Request-ID", "123")
 //
 // Creating an error with context
 //
-//     e := errors.New(ctx, err, 0)
-//     e.Err                                    // err
-//     e.Request()                              // *http.Request
-//     e.ContextData()["X-Request-ID"].(string) // "123"
-//     e.StackTrace()                           // errors.StackTrace
+//	e := errors.New(ctx, err, 0)
+//	e.Err                                    // err
+//	e.Request()                              // *http.Request
+//	e.ContextData()["X-Request-ID"].(string) // "123"
+//	e.StackTrace()                           // errors.StackTrace
 package errors
 
 import (
@@ -118,12 +118,23 @@ func (e *Error) Request() *http.Request {
 	return e.request
 }
 
+// StatusCode implements the statusCoder interface if the underlying error does.
+func (e *Error) StatusCode() int {
+	type statusCoder interface {
+		StatusCode() int
+	}
+
+	if sc, ok := e.Err.(statusCoder); ok {
+		return sc.StatusCode()
+	}
+
+	return 500
+}
+
 // ContextData() returns contextual information associated with this error.
 func (e *Error) ContextData() map[string]interface{} {
 	return e.info
 }
-
-// WithContext returns a new Error with contextual information added.
 func (e *Error) WithContext(ctx context.Context) *Error {
 	if i, ok := infoFromContext(ctx); ok {
 		e.info = i.data
@@ -167,16 +178,18 @@ func genStacktrace(err error, skip int) errors.StackTrace {
 
 // There are two interfaces that drive this implementation:
 //
-//   * causer
-//     - it unwraps an error instance in a chain of errors created with errors.Wrap
-//     - therefore, the last one in the chain is the root cause (inner-most)
+//   - causer
 //
-//   * stackTracer
-//     - not all errors in the aforementioned chain may have a stack trace,
+//   - it unwraps an error instance in a chain of errors created with errors.Wrap
+//
+//   - therefore, the last one in the chain is the root cause (inner-most)
+//
+//   - stackTracer
+//
+//   - not all errors in the aforementioned chain may have a stack trace,
 //
 // It returns the innermost stack trace in a chain of errors because it is
 // the closest to the root cause.
-//
 func getStacktrace(err error) errors.StackTrace {
 	var stack errors.StackTrace
 	for err != nil {
@@ -212,12 +225,13 @@ func stacktrace(err error, skip int) errors.StackTrace {
 // there, so you can use this function to ignore the panic.
 //
 // Ex:
-// go func() {
-//   defer errors.IgnorePanic()
-//   defer errors.PushPanicToChannel(errChan)
 //
-//   DoSomethingDangerous()
-// }()
+//	go func() {
+//	  defer errors.IgnorePanic()
+//	  defer errors.PushPanicToChannel(errChan)
+//
+//	  DoSomethingDangerous()
+//	}()
 func IgnorePanic() {
 	recover()
 }
@@ -230,16 +244,17 @@ func IgnorePanic() {
 // but are actually panics.
 //
 // Ex:
-// go func() {
-//   defer errors.PushPanicToChannel(errChan)
 //
-//   result, err := DoSomethingDangerous()
-//   if err != nil {
-//     errChan <- err
-//   } else {
-//     resultChan <- result
-//   }
-// }()
+//	go func() {
+//	  defer errors.PushPanicToChannel(errChan)
+//
+//	  result, err := DoSomethingDangerous()
+//	  if err != nil {
+//	    errChan <- err
+//	  } else {
+//	    resultChan <- result
+//	  }
+//	}()
 func PushPanicToChannel(ctx context.Context, errChan chan error) {
 	if err := Recover(ctx, recover()); err != nil {
 		errChan <- err

@@ -5,30 +5,30 @@ import (
 	"net/http"
 	"strings"
 
+	"context"
 	httpsignatures "github.com/99designs/httpsignatures-go"
 	"github.com/pkg/errors"
 	"github.com/remind101/pkg/httpx"
-	"context"
 )
 
 // RequestSignatureError should be used in your error handling middleware.
 // Usage:
 //
-//   import "github.com/tomasen/realip"
-//   import "github.com/remind101/pkg/logger"
-//   import "github.com/remind101/pkg/metrics"
-//   import "github.com/remind101/pkg/httpx/middleware"
-//   ...
-//   switch err := errors.Cause(err).(type) {
-//     case middleware.RequestSignatureError:
-//       remoteAddr := realip.RealIP(r)
-//       metrics.Count("authentication.failure", 1, map[string]string{"keyid": err.KeyID, "remote_ip": remoteAddr}, 1.0)
-//       logger.Error(ctx, "authentication failure", "keyid", err.KeyID, "remote_ip", remoteAddr, "err", err.Error())
-//       w.WriteHeader(403)
-//       fmt.Fprintf(w, `{"error":"request signature verification error"}`)
-//     ...
-//   }
-//   ...
+//	import "github.com/tomasen/realip"
+//	import "github.com/remind101/pkg/logger"
+//	import "github.com/remind101/pkg/metrics"
+//	import "github.com/remind101/pkg/httpx/middleware"
+//	...
+//	switch err := errors.Cause(err).(type) {
+//	  case middleware.RequestSignatureError:
+//	    remoteAddr := realip.RealIP(r)
+//	    metrics.Count("authentication.failure", 1, map[string]string{"keyid": err.KeyID, "remote_ip": remoteAddr}, 1.0)
+//	    logger.Error(ctx, "authentication failure", "keyid", err.KeyID, "remote_ip", remoteAddr, "err", err.Error())
+//	    w.WriteHeader(403)
+//	    fmt.Fprintf(w, `{"error":"request signature verification error"}`)
+//	  ...
+//	}
+//	...
 type RequestSignatureError struct {
 	KeyID string
 	msg   string
@@ -48,14 +48,14 @@ func (e RequestSignatureError) Error() string {
 // VerifySignature wraps an httpx.Handler with a request signature check.
 // Usage:
 //
-//   import "github.com/remind101/pkg/httpx"
-//   import "github.com/remind101/pkg/httpx/middleware"
-//   ...
-//   r := httpx.NewRouter()
-//   keys := middleware.NewStaticSigningKeyRepositoryFromStringSlice([]string{"key_id:key_secret", "key2_id:key2_secret"})
-//   cfg := middleware.RequestSigningConfig{ForceVerification: true, SigningKeyRepository: keys}
-//   r.Handle("/foo", VerifySignature(cfg, myHandler)).Methods("GET")
-//   ...
+//	import "github.com/remind101/pkg/httpx"
+//	import "github.com/remind101/pkg/httpx/middleware"
+//	...
+//	r := httpx.NewRouter()
+//	keys := middleware.NewStaticSigningKeyRepositoryFromStringSlice([]string{"key_id:key_secret", "key2_id:key2_secret"})
+//	cfg := middleware.RequestSigningConfig{ForceVerification: true, SigningKeyRepository: keys}
+//	r.Handle("/foo", VerifySignature(cfg, myHandler)).Methods("GET")
+//	...
 //
 // See also documentation for RequestSigningConfig
 // See https://tools.ietf.org/html/draft-cavage-http-signatures-07 for more details.
@@ -97,8 +97,10 @@ func VerifySignature(cfg RequestSigningConfig, h httpx.Handler) httpx.HandlerFun
 
 // RequestSigningConfig contains configuration for request signing middleware.
 // ForceVerification - when true, rejects all requests with absent/malformed/invalid request signature header;
-//                     when false, allows requests with absent/malformed request signature header, rejects
-//                       requests with invalid signature.
+//
+//	when false, allows requests with absent/malformed request signature header, rejects
+//	  requests with invalid signature.
+//
 // SigningKeyRepository - an implementation of SigningKeyRepository.
 type RequestSigningConfig struct {
 	ForceVerification bool

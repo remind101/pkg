@@ -3,12 +3,13 @@
 package logger
 
 import (
+	"context"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 
-	"context"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type Level int
@@ -65,13 +66,64 @@ type Logger interface {
 }
 
 var DefaultLogLevel = INFO
-var DefaultLogger = New(log.New(os.Stdout, "[default] ", log.LstdFlags), DefaultLogLevel)
+var DefaultLogger Logger
 
-// logger is an implementation of the Logger interface backed by the stdlib's
-// logging facility. This is a fairly naive implementation, and it's probably
-// better to use something like https://github.com/inconshreveable/log15 which
-// offers real structure logging.
-type logger struct {
+func init() {
+	// Initialize with zap logger
+	config := zap.NewProductionConfig()
+	config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	zapLogger, _ := config.Build()
+	DefaultLogger = NewZapLogger(zapLogger.Sugar(), DefaultLogLevel)
+}
+
+// Modern implementation using zap
+type zapLogger struct {
+	Level
+	*zap.SugaredLogger
+}
+
+// NewZapLogger creates a Logger implementation backed by zap
+func NewZapLogger(l *zap.SugaredLogger, ll Level) Logger {
+	return &zapLogger{
+		Level:         ll,
+		SugaredLogger: l,
+	}
+}
+
+// With returns a new logger with the given key value pairs added to each log message.
+func (l *zapLogger) With(pairs ...interface{}) Logger {
+	return &zapLogger{
+		Level:         l.Level,
+		SugaredLogger: l.SugaredLogger.With(pairs...),
+	}
+}
+
+func (l *zapLogger) Debug(msg string, pairs ...interface{}) {
+	if DEBUG <= l.Level {
+		l.SugaredLogger.Debugw(msg, pairs...)
+	}
+}
+
+func (l *zapLogger) Info(msg string, pairs ...interface{}) {
+	if INFO <= l.Level {
+		l.SugaredLogger.Infow(msg, pairs...)
+	}
+}
+
+func (l *zapLogger) Error(msg string, pairs ...interface{}) {
+	if ERROR <= l.Level {
+		l.SugaredLogger.Errorw(msg, pairs...)
+	}
+}
+
+func (l *zapLogger) Warn(msg string, pairs ...interface{}) {
+	if WARN <= l.Level {
+		l.SugaredLogger.Warnw(msg, pairs...)
+	}
+}
+
+// Legacy logger implementation for backward compatibility
+type stdLogger struct {
 	Level
 	*log.Logger
 	ctxPairs []interface{} // Contextual key value pairs that will be prepended to the log message.
@@ -79,7 +131,7 @@ type logger struct {
 
 // New wraps the log.Logger to implement the Logger interface.
 func New(l *log.Logger, ll Level) Logger {
-	return &logger{
+	return &stdLogger{
 		Logger:   l,
 		Level:    ll,
 		ctxPairs: []interface{}{},
@@ -87,17 +139,15 @@ func New(l *log.Logger, ll Level) Logger {
 }
 
 // With returns a new logger with the given key value pairs added to each log message.
-func (l *logger) With(pairs ...interface{}) Logger {
-	return &logger{
+func (l *stdLogger) With(pairs ...interface{}) Logger {
+	return &stdLogger{
 		Logger:   l.Logger,
 		Level:    l.Level,
 		ctxPairs: append(l.ctxPairs, pairs...),
 	}
 }
 
-// Log logs the pairs in logfmt. It will treat consecutive arguments as a key
-// value pair. Given the input:
-func (l *logger) Log(level Level, msg string, pairs ...interface{}) {
+func (l *stdLogger) Log(level Level, msg string, pairs ...interface{}) {
 	if level <= l.Level {
 		msg = "status=" + FormatLevel(level) + " " + msg
 		m := l.message(pairs...)
@@ -105,12 +155,12 @@ func (l *logger) Log(level Level, msg string, pairs ...interface{}) {
 	}
 }
 
-func (l *logger) Debug(msg string, pairs ...interface{}) { l.Log(DEBUG, msg, pairs...) }
-func (l *logger) Info(msg string, pairs ...interface{})  { l.Log(INFO, msg, pairs...) }
-func (l *logger) Error(msg string, pairs ...interface{}) { l.Log(ERROR, msg, pairs...) }
-func (l *logger) Warn(msg string, pairs ...interface{})  { l.Log(WARN, msg, pairs...) }
+func (l *stdLogger) Debug(msg string, pairs ...interface{}) { l.Log(DEBUG, msg, pairs...) }
+func (l *stdLogger) Info(msg string, pairs ...interface{})  { l.Log(INFO, msg, pairs...) }
+func (l *stdLogger) Error(msg string, pairs ...interface{}) { l.Log(ERROR, msg, pairs...) }
+func (l *stdLogger) Warn(msg string, pairs ...interface{})  { l.Log(WARN, msg, pairs...) }
 
-func (l *logger) message(pairs ...interface{}) string {
+func (l *stdLogger) message(pairs ...interface{}) string {
 	pairs = append(l.ctxPairs, pairs...)
 
 	if len(pairs) == 1 {
@@ -124,11 +174,11 @@ func (l *logger) message(pairs ...interface{}) string {
 		// reached the end of iteration. We treat the last value as a
 		// simple string message. Given an input pair as:
 		//
-		//	["key", "value", "message"]
+		//      ["key", "value", "message"]
 		//
 		// The output will be:
 		//
-		//	key=value message
+		//      key=value message
 		if len(pairs) == i+1 {
 			parts = append(parts, fmt.Sprintf("%v", pairs[i]))
 		} else {

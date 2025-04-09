@@ -3,9 +3,9 @@ package redis
 import (
 	"context"
 
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
 	"github.com/go-redis/redis"
 	"github.com/opentracing/opentracing-go"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
 )
 
 func WrapClient(ctx context.Context, c *redis.Client, serviceName string) *redis.Client {

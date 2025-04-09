@@ -104,6 +104,7 @@ func InitMetrics() func() {
 // * LOG_LEVEL - The log level
 //
 // If you want to replace the global default logger:
+//
 //	logger.DefaultLogger = InitLogger()
 func InitLogger() logger.Logger {
 	lvl := logger.ERROR

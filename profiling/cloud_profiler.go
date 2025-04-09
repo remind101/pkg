@@ -1,14 +1,13 @@
 package profiling
 
 import (
+	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 
 	"cloud.google.com/go/profiler"
-	"github.com/pkg/errors"
-	"github.com/urfave/cli" // formerly known as github.com/codegangsta/cli
+	"github.com/urfave/cli/v2"
 )
 
 type GoogleProfilerFlag struct{}
@@ -18,75 +17,43 @@ type GoogleProfilerFlag struct{}
 // This allows us to use Google's nifty profiling UI to view live production
 // profiling. https://cloud.google.com/profiler
 func (f GoogleProfilerFlag) Set(projectID string) error {
+	return f.SetWithContext(context.Background(), projectID)
+}
+
+// SetWithContext starts the Google Cloud profiling agent with context support.
+//
+// This allows us to use Google's nifty profiling UI to view live production
+// profiling. https://cloud.google.com/profiler
+func (f GoogleProfilerFlag) SetWithContext(ctx context.Context, projectID string) error {
 	// Get all of the empire configs from the environment, and make sure they're
 	// set.
 	empire_appname := os.Getenv("EMPIRE_APPNAME")
 	if empire_appname == "" {
-		log.Printf(
-			"%+v",
-			errors.WithStack(
-				fmt.Errorf(
-					"pkg/profiling: GoogleProfilerFlag.Set: missing/blank required env var EMPIRE_APPNAME",
-				),
-			),
-		)
-
+		log.Printf("pkg/profiling: GoogleProfilerFlag.Set: missing/blank required env var EMPIRE_APPNAME")
 		return nil
 	}
 
 	empire_process := os.Getenv("EMPIRE_PROCESS")
 	if empire_process == "" {
-		log.Printf(
-			"%+v",
-			errors.WithStack(
-				fmt.Errorf(
-					"pkg/profiling: GoogleProfilerFlag.Set: missing/blank required env var EMPIRE_PROCESS",
-				),
-			),
-		)
-
+		log.Printf("pkg/profiling: GoogleProfilerFlag.Set: missing/blank required env var EMPIRE_PROCESS")
 		return nil
 	}
 
 	empire_release := os.Getenv("EMPIRE_RELEASE")
 	if empire_release == "" {
-		log.Printf(
-			"%+v",
-			errors.WithStack(
-				fmt.Errorf(
-					"pkg/profiling: GoogleProfilerFlag.Set: missing/blank required env var EMPIRE_RELEASE",
-				),
-			),
-		)
-
+		log.Printf("pkg/profiling: GoogleProfilerFlag.Set: missing/blank required env var EMPIRE_RELEASE")
 		return nil
 	}
 
 	creds := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS_CONTENT")
 	if creds == "" {
-		log.Printf(
-			"%+v",
-			errors.WithStack(
-				fmt.Errorf(
-					"pkg/profiling: GoogleProfilerFlag.Set: missing/blank required env var GOOGLE_APPLICATION_CREDENTIALS_CONTENT",
-				),
-			),
-		)
-
+		log.Printf("pkg/profiling: GoogleProfilerFlag.Set: missing/blank required env var GOOGLE_APPLICATION_CREDENTIALS_CONTENT")
 		return nil
 	}
 
 	credsPath := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
 	if credsPath == "" {
-		log.Printf(
-			"%+v",
-			errors.WithStack(
-				fmt.Errorf(
-					"pkg/profiling: GoogleProfilerFlag.Set: missing/blank required env var GOOGLE_APPLICATION_CREDENTIALS",
-				),
-			),
-		)
-
+		log.Printf("pkg/profiling: GoogleProfilerFlag.Set: missing/blank required env var GOOGLE_APPLICATION_CREDENTIALS")
 		return nil
 	}
 
@@ -99,18 +66,9 @@ func (f GoogleProfilerFlag) Set(projectID string) error {
 	// If $GOOGLE_APPLICATION_CREDENTIALS_CONTENT isn't set then we do
 	// nothing, since we might be running in an environment where the
 	// credentials might be discovered through other means.
-	if err := ioutil.WriteFile(credsPath, []byte(creds), 0600); err != nil {
-		log.Printf(
-			"%+v",
-			errors.WithStack(
-				fmt.Errorf(
-					"pkg/profiling: GoogleProfilerFlag.Set: could not write $GOOGLE_APPLICATION_CREDENTIALS_CONTENT to %s: %s",
-					credsPath,
-					err,
-				),
-			),
-		)
-
+	if err := os.WriteFile(credsPath, []byte(creds), 0600); err != nil {
+		log.Printf("pkg/profiling: GoogleProfilerFlag.Set: could not write $GOOGLE_APPLICATION_CREDENTIALS_CONTENT to %s: %s",
+			credsPath, err)
 		return nil
 	}
 
@@ -122,15 +80,7 @@ func (f GoogleProfilerFlag) Set(projectID string) error {
 
 	err := profiler.Start(cfg)
 	if err != nil {
-		log.Printf(
-			"%+v",
-			errors.WithStack(
-				fmt.Errorf(
-					"pkg/profiling: GoogleProfilerFlag.Set: error starting profiler: %s",
-					err,
-				),
-			),
-		)
+		log.Printf("pkg/profiling: GoogleProfilerFlag.Set: error starting profiler: %s", err)
 	}
 
 	return nil
@@ -142,10 +92,16 @@ func (f GoogleProfilerFlag) String() string {
 
 // NewCliFlag returns a flag that will enable Cloud Profiler
 func NewCliFlag() cli.Flag {
-	return cli.GenericFlag{
-		Name:   "google-profiler-project",
-		Value:  GoogleProfilerFlag{},
-		Usage:  "The Google Project ID for submitting Cloud Profiler data",
-		EnvVar: "GOOGLE_PROFILER_PROJECT",
+	return &cli.StringFlag{
+		Name:    "google-profiler-project",
+		Value:   "",
+		Usage:   "The Google Project ID for submitting Cloud Profiler data",
+		EnvVars: []string{"GOOGLE_PROFILER_PROJECT"},
+		Action: func(ctx *cli.Context, v string) error {
+			if v != "" {
+				return GoogleProfilerFlag{}.Set(v)
+			}
+			return nil
+		},
 	}
 }

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -43,7 +43,7 @@ func (h *HTTPRequest) decodeJSON() hash {
 }
 
 func newHTTPRequest(r *http.Request) *HTTPRequest {
-	body, _ := ioutil.ReadAll(r.Body)
+	body, _ := io.ReadAll(r.Body)
 	return &HTTPRequest{r, body}
 }
 

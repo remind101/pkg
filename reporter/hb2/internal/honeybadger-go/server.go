@@ -2,9 +2,10 @@ package honeybadger
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -46,7 +47,7 @@ func (s *server) Notify(feature Feature, payload Payload) error {
 		return err
 	}
 	url.Path = "v1/" + feature.Endpoint
-	req, err := http.NewRequest("POST", url.String(), bytes.NewReader(payload.toJSON()))
+	req, err := http.NewRequestWithContext(context.Background(), "POST", url.String(), bytes.NewReader(payload.toJSON()))
 	if err != nil {
 		return err
 	}
@@ -60,7 +61,7 @@ func (s *server) Notify(feature Feature, payload Payload) error {
 		return err
 	}
 	defer func() {
-		ioutil.ReadAll(resp.Body)
+		io.ReadAll(resp.Body)
 		resp.Body.Close()
 	}()
 

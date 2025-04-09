@@ -3,7 +3,7 @@
 // Recommended Usage:
 //
 //	type MyClient struct {
-//		Client *client.Client
+//	        Client *client.Client
 //	}
 //
 //	type ThingInput struct {
@@ -13,10 +13,10 @@
 //	}
 //
 //	func(c MyClient) Thing(input *ThingInput) (*ThingOutput, err) {
-//		var output ThingOutput
-//		req := c.Client.NewRequest("GET", "/thing", input, output)
-//		err := req.Send()
-//		return output, err
+//	        var output ThingOutput
+//	        req := c.Client.NewRequest("GET", "/thing", input, output)
+//	        err := req.Send()
+//	        return output, err
 //	}
 package client
 
@@ -109,8 +109,7 @@ func New(info metadata.ClientInfo, options ...ClientOpt) *Client {
 // A request.Request will be initialized with the http.Request, Handlers,
 // params and data.
 func (c *Client) NewRequest(ctx context.Context, method, path string, params interface{}, data interface{}) *request.Request {
-	httpReq, _ := http.NewRequest(method, path, nil)
-	httpReq = httpReq.WithContext(ctx)
+	httpReq, _ := http.NewRequestWithContext(ctx, method, path, nil)
 	httpReq.URL, _ = url.Parse(c.Info.Endpoint + path)
 
 	r := request.New(httpReq, c.Info, c.Handlers.Copy(), params, data)

@@ -2,14 +2,13 @@ package middleware
 
 import (
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"context"
 	httpsignatures "github.com/99designs/httpsignatures-go"
 	"github.com/remind101/pkg/httpx"
-	"context"
 )
 
 type fakeHandler struct {
@@ -37,7 +36,7 @@ func wrap(h httpx.HandlerFunc) http.HandlerFunc {
 }
 
 func mustReadString(t *testing.T, body io.ReadCloser) string {
-	result, err := ioutil.ReadAll(body)
+	result, err := io.ReadAll(body)
 	if err != nil {
 		t.Fatal(err)
 	}

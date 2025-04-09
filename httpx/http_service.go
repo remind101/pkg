@@ -27,11 +27,14 @@ type Client struct {
 
 var DefaultHTTPTransport = &http.Transport{
 	Proxy: http.ProxyFromEnvironment,
-	Dial: (&net.Dialer{
+	DialContext: (&net.Dialer{
 		Timeout:   15 * time.Second,
 		KeepAlive: 90 * time.Second,
-	}).Dial,
+	}).DialContext,
 	TLSHandshakeTimeout: 3 * time.Second,
+	MaxIdleConns:        100,
+	MaxIdleConnsPerHost: 8,
+	IdleConnTimeout:     90 * time.Second,
 }
 
 var DefaultHTTPClient = &http.Client{
@@ -50,9 +53,9 @@ func NewClient(c *http.Client) *Client {
 
 // NewServiceClient returns an httpx.Client that has the following behavior:
 //
-//      1. Request ids will be added to outgoing requests within the
-//         X-Request-Id header.
-//      2. Any 500 errors will be retried.
+//  1. Request ids will be added to outgoing requests within the
+//     X-Request-Id header.
+//  2. Any 500 errors will be retried.
 //
 // The optional *http.Client parameter can be used to override the default client.
 func NewServiceClient(serviceName string, c *http.Client) *Client {
@@ -83,8 +86,9 @@ type Transport struct {
 	*http.Client
 }
 
-// TODO: add support for context.Context cancellations
+// RoundTrip implements the RoundTripper interface with context support
 func (t *Transport) RoundTrip(ctx context.Context, req *http.Request) (*http.Response, error) {
+	req = req.WithContext(ctx)
 	return t.Client.Do(req)
 }
 
@@ -160,7 +164,7 @@ func NewJSONRequest(method, path string, v interface{}) (*http.Request, error) {
 		r = bytes.NewReader(raw)
 	}
 
-	req, err := http.NewRequest(method, path, r)
+	req, err := http.NewRequestWithContext(context.Background(), method, path, r)
 	if err != nil {
 		return nil, err
 	}

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"net/http"
 
-	dd_ext "gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 	"github.com/remind101/pkg/httpx"
+	dd_ext "gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
 )
 
 type OpentracingTracer struct {
@@ -50,8 +50,8 @@ func (h *OpentracingTracer) ServeHTTPContext(ctx context.Context, w http.Respons
 	reqErr := h.handler.ServeHTTPContext(ctx, rw, r)
 	if reqErr != nil {
 		span.SetTag(dd_ext.Error, reqErr)
-		if _, ok := err.(fmt.Formatter); ok {
-			span.SetTag(dd_ext.ErrorStack, fmt.Sprintf("%+v", err))
+		if _, ok := reqErr.(fmt.Formatter); ok {
+			span.SetTag(dd_ext.ErrorStack, fmt.Sprintf("%+v", reqErr))
 		}
 	}
 	span.SetTag(dd_ext.HTTPCode, rw.Status())

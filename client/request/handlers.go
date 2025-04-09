@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -138,7 +137,7 @@ func handleSendError(r *Request, err error) {
 			r.HTTPResponse = &http.Response{
 				StatusCode: int(code),
 				Status:     http.StatusText(int(code)),
-				Body:       ioutil.NopCloser(bytes.NewReader([]byte{})),
+				Body:       io.NopCloser(bytes.NewReader([]byte{})),
 			}
 			return
 		}
@@ -150,7 +149,7 @@ func handleSendError(r *Request, err error) {
 		r.HTTPResponse = &http.Response{
 			StatusCode: int(0),
 			Status:     http.StatusText(int(0)),
-			Body:       ioutil.NopCloser(bytes.NewReader([]byte{})),
+			Body:       io.NopCloser(bytes.NewReader([]byte{})),
 		}
 	}
 
@@ -173,7 +172,7 @@ var JSONBuilder = Handler{
 				return
 			}
 			r.HTTPRequest.ContentLength = int64(len(raw))
-			r.HTTPRequest.Body = ioutil.NopCloser(bytes.NewReader(raw))
+			r.HTTPRequest.Body = io.NopCloser(bytes.NewReader(raw))
 		}
 	},
 }
@@ -189,7 +188,7 @@ var JSONDecoder = Handler{
 			defer func() {
 				// Read the entire body, including any trailing garbage, so
 				// this connection is in a good state for reuse.
-				io.Copy(ioutil.Discard, r.HTTPResponse.Body)
+				io.Copy(io.Discard, r.HTTPResponse.Body)
 				r.HTTPResponse.Body.Close()
 			}()
 		}

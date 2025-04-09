@@ -11,11 +11,12 @@ var RuntimeMetricsSamplingInterval time.Duration = 30 * time.Second
 
 // Runtime enters into a loop, sampling and outputing the runtime stats periodically.
 // Usage:
-//   func main() {
-//     ...
-//     go metrics.Runtime()
-//     ...
-//   }
+//
+//	func main() {
+//	  ...
+//	  go metrics.Runtime()
+//	  ...
+//	}
 func Runtime() {
 	c := time.Tick(RuntimeMetricsSamplingInterval)
 	for _ = range c {

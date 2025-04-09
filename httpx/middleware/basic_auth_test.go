@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/remind101/pkg/httpx"
 	"context"
+	"github.com/remind101/pkg/httpx"
 )
 
 func TestBasicAuth(t *testing.T) {

@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/remind101/pkg/httpx"
 	"context"
+	"github.com/remind101/pkg/httpx"
 )
 
 type BasicAuther struct {

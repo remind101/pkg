@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	dd_ext "gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
 	"github.com/aws/aws-sdk-go/aws/request"
 	opentracing "github.com/opentracing/opentracing-go"
+	dd_ext "gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
 )
 
 // Option is a hook for adding span tags.

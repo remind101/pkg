@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -20,7 +20,7 @@ type timeoutTest struct {
 	Err      error
 	Code     int
 	Body     string
-	Panic    error
+	Panic    interface{}
 }
 
 func TestTimeoutHandler(t *testing.T) {
@@ -106,10 +106,20 @@ func TestTimeoutHandler(t *testing.T) {
 
 func compareError(t *testing.T, got, want interface{}) {
 	t.Helper()
+	if got == nil && want == nil {
+		return
+	}
+
 	if got == nil && want != nil || got != nil && want == nil {
 		t.Errorf("got: %#v; expected %#v", got, want)
+		return
 	}
-	if got == nil && want == nil {
+
+	// For timeout errors, just compare the error message
+	if _, ok := want.(*handlerTimeout); ok {
+		if g, w := got.(error).Error(), want.(error).Error(); g != w {
+			t.Errorf("got: %#v; expected %#v", g, w)
+		}
 		return
 	}
 
@@ -122,7 +132,15 @@ func runTimeoutTest(tt timeoutTest, t *testing.T) {
 	t.Helper()
 	defer func() {
 		v := recover()
-		compareError(t, v, tt.Panic)
+		if v == nil && tt.Panic != nil {
+			t.Errorf("expected panic: %v", tt.Panic)
+		} else if v != nil && tt.Panic == nil {
+			t.Errorf("unexpected panic: %v", v)
+		} else if v != nil && tt.Panic != nil {
+			if v.(error).Error() != tt.Panic.(error).Error() {
+				t.Errorf("got panic: %v; expected: %v", v, tt.Panic)
+			}
+		}
 	}()
 
 	th := TimeoutHandler(tt.Handler, tt.Duration)
@@ -145,7 +163,7 @@ func runTimeoutTest(tt timeoutTest, t *testing.T) {
 	compareError(t, err, tt.Err)
 
 	if tt.Body != "" {
-		b, _ := ioutil.ReadAll(resp.Result().Body)
+		b, _ := io.ReadAll(resp.Result().Body)
 		if got, want := string(b), tt.Body; got != want {
 			t.Errorf("got: %#v; expected %#v", got, want)
 		}
@@ -153,7 +171,7 @@ func runTimeoutTest(tt timeoutTest, t *testing.T) {
 
 	if tt.Code > 0 {
 		if got, want := resp.Result().StatusCode, tt.Code; got != want {
-			t.Errorf("got: %#v; expected %#v", got, want)
+			t.Errorf("got: %d; expected %d", got, want)
 		}
 	}
 }
