@@ -3,21 +3,21 @@
 //
 // Recommend Usage:
 //
-//	func main() {
-//		env := svc.InitAll()
-//		defer env.Close()
+//		func main() {
+//			env := svc.InitAll()
+//			defer env.Close()
 //
-//		r := httpx.NewRouter()
-//		// ... add routes
+//			r := httpx.NewRouter()
+//			// ... add routes
 //
-//		h := svc.NewStandardHandler(svc.HandlerOpts{
-//			Router:   r,
-//			Reporter: env.Reporter,
-//	})
+//			h := svc.NewStandardHandler(svc.HandlerOpts{
+//				Router:   r,
+//				Reporter: env.Reporter,
+//		})
 //
-// 	s := svc.NewServer(h, svc.WithPort("8080"))
-//  svc.RunServer(s)
-// }
+//		s := svc.NewServer(h, svc.WithPort("8080"))
+//	 svc.RunServer(s)
+//	}
 package svc
 
 import (

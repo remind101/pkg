@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -93,6 +92,9 @@ func (c *serviceClient) do(ctx context.Context, method, path, token string, json
 		return err
 	}
 
+	// Ensure the request has the context
+	req = req.WithContext(ctx)
+
 	if token == "" {
 		c.setBasicAuth(req)
 	} else {
@@ -120,7 +122,7 @@ func (c *serviceClient) do(ctx context.Context, method, path, token string, json
 		return err
 	}
 	if targetObject == nil {
-		_, err := io.Copy(ioutil.Discard, resp.Body)
+		_, err := io.Copy(io.Discard, resp.Body)
 		return err
 	}
 

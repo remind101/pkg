@@ -30,4 +30,5 @@ const (
 	varsKey key = iota
 	requestIDKey
 	routeKey
+	StatusCodeKey // Key for storing HTTP status code in context
 )

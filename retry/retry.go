@@ -1,13 +1,14 @@
 package retry
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"reflect"
 	"sync/atomic"
 	"time"
 
-	"github.com/cenkalti/backoff"
+	"github.com/cenkalti/backoff/v4"
 )
 
 type BackOffOpts struct {
@@ -74,7 +75,15 @@ func NewErrorTypeRetrier(name string,
 		shouldRetryFunc: RetryWhenErrorTypeMatches(instancesToTypes(errorTypes))}
 }
 
+// Retry executes the function f until it does not return error or BackOff stops.
+// It is backwards compatible with the original implementation.
 func (r *Retrier) Retry(f func() (interface{}, error)) (interface{}, error) {
+	return r.RetryWithContext(context.Background(), f)
+}
+
+// RetryWithContext executes the function f until it does not return error, BackOff stops, or context is canceled.
+// This is a modern version that supports context cancellation.
+func (r *Retrier) RetryWithContext(ctx context.Context, f func() (interface{}, error)) (interface{}, error) {
 	var val interface{}
 	var err error
 	var next time.Duration
@@ -82,30 +91,42 @@ func (r *Retrier) Retry(f func() (interface{}, error)) (interface{}, error) {
 	numTries := 0
 	b := r.newBackOff()
 	b.Reset()
+
 	for {
-		numTries++
-		if val, err = f(); err == nil {
-			return val, nil
-		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+			numTries++
+			if val, err = f(); err == nil {
+				return val, nil
+			}
 
-		if !r.shouldRetryFunc(err) {
-			r.notifyShouldNotRetry(err, numTries)
-			return val, err
-		}
+			if !r.shouldRetryFunc(err) {
+				r.notifyShouldNotRetry(err, numTries)
+				return val, err
+			}
 
-		if next = b.NextBackOff(); next == backoff.Stop {
-			r.notifyGaveUp(err, numTries)
-			return val, err
-		}
+			if next = b.NextBackOff(); next == backoff.Stop {
+				r.notifyGaveUp(err, numTries)
+				return val, err
+			}
 
-		time.Sleep(next)
-		r.notifyRetry(err, numTries)
+			timer := time.NewTimer(next)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return nil, ctx.Err()
+			case <-timer.C:
+				r.notifyRetry(err, numTries)
+			}
+		}
 	}
 }
 
 type RetryEvent struct {
-	Retrier *Retrier
-	Err     error
+	Retrier  *Retrier
+	Err      error
 	NumTries int
 }
 

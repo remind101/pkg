@@ -1,7 +1,7 @@
 package httpx
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -161,7 +161,7 @@ func TestJSONRequests(t *testing.T) {
 	if err != nil {
 		t.Fatal("Non-empty JSON request should have been built without error")
 	}
-	body, err := ioutil.ReadAll(req.Body)
+	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		t.Fatal("Failed to read HTTP request body")
 	}

@@ -6,11 +6,11 @@ import (
 	"reflect"
 	"testing"
 
+	"context"
 	"github.com/remind101/pkg/httpx"
 	"github.com/remind101/pkg/httpx/middleware"
 	"github.com/remind101/pkg/metrics"
 	"github.com/remind101/pkg/metrics/metricshttpx"
-	"context"
 )
 
 func TestMiddlewareReportsResponseTimeMetrics(t *testing.T) {

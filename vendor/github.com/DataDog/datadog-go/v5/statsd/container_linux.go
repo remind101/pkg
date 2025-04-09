@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"regexp"
 	"strings"
 	"syscall"
@@ -20,16 +21,25 @@ const (
 	// selfMountinfo is the path to the mountinfo path where we can find the container id in case cgroup namespace is preventing the use of /proc/self/cgroup
 	selfMountInfoPath = "/proc/self/mountinfo"
 
-	// mountsPath is the path to the file listing all the mount points
-	mountsPath = "/proc/mounts"
+	// defaultCgroupMountPath is the default path to the cgroup mount point.
+	defaultCgroupMountPath = "/sys/fs/cgroup"
+
+	// cgroupV1BaseController is the controller used to identify the container-id for cgroup v1
+	cgroupV1BaseController = "memory"
 
 	uuidSource      = "[0-9a-f]{8}[-_][0-9a-f]{4}[-_][0-9a-f]{4}[-_][0-9a-f]{4}[-_][0-9a-f]{12}"
 	containerSource = "[0-9a-f]{64}"
 	taskSource      = "[0-9a-f]{32}-\\d+"
 
 	containerdSandboxPrefix = "sandboxes"
-	containerRegexpStr      = "([0-9a-f]{64})|([0-9a-f]{8}(-[0-9a-f]{4}){4}$)"
-	cIDRegexpStr            = `([^\s/]+)/(` + containerRegexpStr + `)/[\S]*hostname`
+
+	// ContainerRegexpStr defines the regexp used to match container IDs
+	// ([0-9a-f]{64}) is standard container id used pretty much everywhere
+	// ([0-9a-f]{32}-\d+) is container id used by AWS ECS
+	// ([0-9a-f]{8}(-[0-9a-f]{4}){4}$) is container id used by Garden
+	containerRegexpStr = "([0-9a-f]{64})|([0-9a-f]{32}-\\d+)|([0-9a-f]{8}(-[0-9a-f]{4}){4}$)"
+	// cIDRegexpStr defines the regexp used to match container IDs in /proc/self/mountinfo
+	cIDRegexpStr = `.*/([^\s/]+)/(` + containerRegexpStr + `)/[\S]*hostname`
 
 	// From https://github.com/torvalds/linux/blob/5859a2b1991101d6b978f3feb5325dad39421f29/include/linux/proc_ns.h#L41-L49
 	// Currently, host namespace inode number are hardcoded, which can be used to detect
@@ -45,6 +55,9 @@ var (
 	expContainerID = regexp.MustCompile(fmt.Sprintf(`(%s|%s|%s)(?:.scope)?$`, uuidSource, containerSource, taskSource))
 
 	cIDMountInfoRegexp = regexp.MustCompile(cIDRegexpStr)
+
+	// initContainerID initializes the container ID.
+	initContainerID = internalInitContainerID
 )
 
 // parseContainerID finds the first container ID reading from r and returns it.
@@ -103,30 +116,6 @@ func readMountinfo(path string) string {
 	return parseMountinfo(f)
 }
 
-// isCgroupV1 checks if Cgroup V1 is used
-func isCgroupV1(mountsPath string) bool {
-	f, err := os.Open(mountsPath)
-	if err != nil {
-		return false
-	}
-	defer f.Close()
-
-	scn := bufio.NewScanner(f)
-	for scn.Scan() {
-		line := scn.Text()
-
-		tokens := strings.Fields(line)
-		if len(tokens) >= 3 {
-			fsType := tokens[2]
-			if fsType == "cgroup" {
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
 func isHostCgroupNamespace() bool {
 	fi, err := os.Stat("/proc/self/ns/cgroup")
 	if err != nil {
@@ -138,21 +127,93 @@ func isHostCgroupNamespace() bool {
 	return inode == hostCgroupNamespaceInode
 }
 
-// initContainerID initializes the container ID.
+// parseCgroupNodePath parses /proc/self/cgroup and returns a map of controller to its associated cgroup node path.
+func parseCgroupNodePath(r io.Reader) map[string]string {
+	res := make(map[string]string)
+	scn := bufio.NewScanner(r)
+	for scn.Scan() {
+		line := scn.Text()
+		tokens := strings.Split(line, ":")
+		if len(tokens) != 3 {
+			continue
+		}
+		if tokens[1] == cgroupV1BaseController || tokens[1] == "" {
+			res[tokens[1]] = tokens[2]
+		}
+	}
+	return res
+}
+
+// getCgroupInode returns the cgroup controller inode if it exists otherwise an empty string.
+// The inode is prefixed by "in-" and is used by the agent to retrieve the container ID.
+// For cgroup v1, we use the memory controller.
+func getCgroupInode(cgroupMountPath, procSelfCgroupPath string) string {
+	// Parse /proc/self/cgroup to retrieve the paths to the memory controller (cgroupv1) and the cgroup node (cgroupv2)
+	f, err := os.Open(procSelfCgroupPath)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	cgroupControllersPaths := parseCgroupNodePath(f)
+	// Retrieve the cgroup inode from /sys/fs/cgroup+controller+cgroupNodePath
+	for _, controller := range []string{cgroupV1BaseController, ""} {
+		cgroupNodePath, ok := cgroupControllersPaths[controller]
+		if !ok {
+			continue
+		}
+		inode := inodeForPath(path.Join(cgroupMountPath, controller, cgroupNodePath))
+		if inode != "" {
+			return inode
+		}
+	}
+	return ""
+}
+
+// inodeForPath returns the inode for the provided path or empty on failure.
+func inodeForPath(path string) string {
+	fi, err := os.Stat(path)
+	if err != nil {
+		return ""
+	}
+	stats, ok := fi.Sys().(*syscall.Stat_t)
+	if !ok {
+		return ""
+	}
+	return fmt.Sprintf("in-%d", stats.Ino)
+}
+
+// internalInitContainerID initializes the container ID.
 // It can either be provided by the user or read from cgroups.
-func initContainerID(userProvidedID string, cgroupFallback bool) {
+func internalInitContainerID(userProvidedID string, cgroupFallback, isHostCgroupNs bool) {
 	initOnce.Do(func() {
-		if userProvidedID != "" {
-			containerID = userProvidedID
+		readCIDOrInode(userProvidedID, cgroupPath, selfMountInfoPath, defaultCgroupMountPath, cgroupFallback, isHostCgroupNs)
+	})
+}
+
+// readCIDOrInode reads the container ID from the user provided ID, cgroups or mountinfo.
+func readCIDOrInode(userProvidedID, cgroupPath, selfMountInfoPath, defaultCgroupMountPath string, cgroupFallback, isHostCgroupNs bool) {
+	if userProvidedID != "" {
+		containerID = userProvidedID
+		return
+	}
+
+	if cgroupFallback {
+		containerID = readContainerID(cgroupPath)
+		if containerID != "" {
 			return
 		}
 
-		if cgroupFallback {
-			if isCgroupV1(mountsPath) || isHostCgroupNamespace() {
-				containerID = readContainerID(cgroupPath)
-			} else {
-				containerID = readMountinfo(selfMountInfoPath)
-			}
+		containerID = readMountinfo(selfMountInfoPath)
+		if containerID != "" {
+			return
 		}
-	})
+
+		// If we're in the host cgroup namespace, the cid should be retrievable in /proc/self/cgroup
+		// In private cgroup namespace, we can retrieve the cgroup controller inode.
+		if containerID == "" && isHostCgroupNs {
+			return
+		}
+
+		containerID = getCgroupInode(defaultCgroupMountPath, cgroupPath)
+	}
 }

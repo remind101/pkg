@@ -5,10 +5,23 @@
 
 package purego
 
+// CDecl marks a function as being called using the __cdecl calling convention as defined in
+// the [MSDocs] when passed to NewCallback. It must be the first argument to the function.
+// This is only useful on 386 Windows, but it is safe to use on other platforms.
+//
+// [MSDocs]: https://learn.microsoft.com/en-us/cpp/cpp/cdecl?view=msvc-170
+type CDecl struct{}
+
 const (
-	maxArgs     = 9
+	maxArgs     = 15
 	numOfFloats = 8 // arm64 and amd64 both have 8 float registers
 )
+
+type syscall15Args struct {
+	fn, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15 uintptr
+	f1, f2, f3, f4, f5, f6, f7, f8                                       uintptr
+	arm64_r8                                                             uintptr
+}
 
 // SyscallN takes fn, a C function pointer and a list of arguments as uintptr.
 // There is an internal maximum number of arguments that SyscallN can take. It panics
@@ -36,5 +49,5 @@ func SyscallN(fn uintptr, args ...uintptr) (r1, r2, err uintptr) {
 	// add padding so there is no out-of-bounds slicing
 	var tmp [maxArgs]uintptr
 	copy(tmp[:], args)
-	return syscall_syscall9X(fn, tmp[0], tmp[1], tmp[2], tmp[3], tmp[4], tmp[5], tmp[6], tmp[7], tmp[8])
+	return syscall_syscall15X(fn, tmp[0], tmp[1], tmp[2], tmp[3], tmp[4], tmp[5], tmp[6], tmp[7], tmp[8], tmp[9], tmp[10], tmp[11], tmp[12], tmp[13], tmp[14])
 }

@@ -12,15 +12,15 @@ import (
 // ResponseTimeReporter reports timing metrics using metrics package
 //
 // Usage:
-//   r := martini.NewRouter()
-//   r.Get("/boom/error",
-// 	ResponseTimeReporter(),
-// 	func(req *http.Request) {
-//        ...
-// 	})
+//
+//	  r := martini.NewRouter()
+//	  r.Get("/boom/error",
+//		ResponseTimeReporter(),
+//		func(req *http.Request) {
+//	       ...
+//		})
 //
 // It is important to insert it after routing, not a a generic martini middleware!
-//
 func ResponseTimeReporter() martini.Handler {
 	return func(res http.ResponseWriter, c martini.Context, r martini.Route) {
 		t := metrics.ResponseTime()

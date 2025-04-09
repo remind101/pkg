@@ -3,12 +3,12 @@ package aws
 import (
 	"fmt"
 
-	dd_ext "gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	opentracing "github.com/opentracing/opentracing-go"
+	dd_ext "gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
 )
 
 var (

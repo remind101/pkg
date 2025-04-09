@@ -32,7 +32,7 @@ func TestTracing(t *testing.T) {
 					return nil
 				})).Methods("GET")
 			},
-			req: newRequest("GET", "/path"),
+			req:                     newRequest("GET", "/path"),
 			expectedTransactionName: "GET /path",
 			expectedUrl:             "/path",
 		},
@@ -43,7 +43,7 @@ func TestTracing(t *testing.T) {
 					return nil
 				})).Methods("DELETE")
 			},
-			req: newRequest("DELETE", "/users/23"),
+			req:                     newRequest("DELETE", "/users/23"),
 			expectedTransactionName: "DELETE /users/{user_id}",
 			expectedUrl:             "/users/23",
 		},
@@ -54,7 +54,7 @@ func TestTracing(t *testing.T) {
 					return nil
 				})).Methods("PUT")
 			},
-			req: newRequest("PUT", "/articles/tech/123"),
+			req:                     newRequest("PUT", "/articles/tech/123"),
 			expectedTransactionName: "PUT /articles/{category}/{id:[0-9]+}",
 			expectedUrl:             "/articles/tech/123",
 		},
@@ -65,7 +65,7 @@ func TestTracing(t *testing.T) {
 					return nil
 				}).Methods("GET")
 			},
-			req: newRequest("GET", "/articles/tech/456"),
+			req:                     newRequest("GET", "/articles/tech/456"),
 			expectedTransactionName: "GET /articles/{category}/{id}",
 			expectedUrl:             "/articles/tech/456",
 		},
@@ -73,7 +73,7 @@ func TestTracing(t *testing.T) {
 		{
 			routes: func(r *httpx.Router) {
 			},
-			req: newRequest("GET", "/non_existent"),
+			req:                     newRequest("GET", "/non_existent"),
 			expectedTransactionName: "GET /non_existent",
 			expectedUrl:             "/non_existent",
 		},

@@ -35,7 +35,7 @@ func TestReport(t *testing.T) {
 	})
 	ctx := WithReporter(context.Background(), r)
 
-	req, _ := http.NewRequest("GET", "/", nil)
+	req, _ := http.NewRequestWithContext(context.Background(), "GET", "/", nil)
 	req.Header.Set("Content-Type", "application/json")
 	ctx = errors.WithRequest(ctx, req)
 

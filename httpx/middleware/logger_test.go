@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	"context"
 	"github.com/remind101/pkg/httpx"
 	"github.com/remind101/pkg/logger"
-	"context"
 )
 
 func TestLogger(t *testing.T) {

@@ -4,8 +4,8 @@ import (
 	"hash/fnv"
 	"math"
 
-	"github.com/pkg/errors"
 	"github.com/bits-and-blooms/bitset"
+	"github.com/pkg/errors"
 )
 
 // ProbabilisticCounter implements an a linear-time counting algorithm, also known as "linear counting".
@@ -20,7 +20,7 @@ import (
 // the number of "0" entries). It then estimates the column cardinality by dividing this count by the bit map size m
 // (thus obtaining the fraction of empty bit map entries V_n) and plugging the result into the following equation:
 //
-//   n^ = -m * ln V_n (The symbol ^ denotes an estimator)"
+//	n^ = -m * ln V_n (The symbol ^ denotes an estimator)"
 //
 // Therefore, ProbabilisticCounter is able to compute an approximate distinct count for a sufficiently large number of
 // string values, with an error rate of less than 1.25% on average. It does so while using a very low amount of memory,

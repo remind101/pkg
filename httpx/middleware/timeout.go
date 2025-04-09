@@ -44,6 +44,11 @@ func (e handlerTimeout) Error() string {
 	return e.message
 }
 
+// StatusCode implements the statusCoder interface
+func (e handlerTimeout) StatusCode() int {
+	return http.StatusServiceUnavailable
+}
+
 // ErrHandlerTimeout is returned on ResponseWriter Write calls
 // in handlers which have timed out.
 var ErrHandlerTimeout = &handlerTimeout{"http: handler timeout"}
@@ -100,7 +105,10 @@ func (h *timeoutHandler) ServeHTTPContext(ctx context.Context, rw http.ResponseW
 		tw.mu.Lock()
 		defer tw.mu.Unlock()
 		tw.timedOut = true
+		// Create a timeout error
 		err = errors.New(ctx, ErrHandlerTimeout, 0)
+		// Set the status code in the context
+		ctx = context.WithValue(ctx, httpx.StatusCodeKey, http.StatusServiceUnavailable)
 	}
 	return err
 }

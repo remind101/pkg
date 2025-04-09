@@ -28,6 +28,8 @@ type config struct {
 	serviceName   string
 	runtimeID     string
 	headersAsTags *internal.LockMap
+	dogstatsdAddr string
+	statsTags     []string
 }
 
 // AnalyticsRate returns the sampling rate at which events should be marked. It uses
@@ -58,6 +60,41 @@ func SetServiceName(name string) {
 	cfg.mu.Lock()
 	defer cfg.mu.Unlock()
 	cfg.serviceName = name
+}
+
+// DogstatsdAddr returns the destination for tracer and contrib statsd clients
+func DogstatsdAddr() string {
+	cfg.mu.RLock()
+	defer cfg.mu.RUnlock()
+	return cfg.dogstatsdAddr
+}
+
+// SetDogstatsdAddr sets the destination for statsd clients to be used by tracer and contrib packages
+func SetDogstatsdAddr(addr string) {
+	cfg.mu.Lock()
+	defer cfg.mu.Unlock()
+	cfg.dogstatsdAddr = addr
+}
+
+// StatsTags returns a list of tags that apply to statsd payloads for both tracer and contribs
+func StatsTags() []string {
+	cfg.mu.RLock()
+	defer cfg.mu.RUnlock()
+	// Copy the slice before returning it, so that callers cannot pollute the underlying array
+	tags := make([]string, len(cfg.statsTags))
+	copy(tags, cfg.statsTags)
+	return tags
+}
+
+// SetStatsTags configures the list of tags that should be applied to contribs' statsd.Client as global tags
+// It should only be called by the tracer package
+func SetStatsTags(tags []string) {
+	cfg.mu.Lock()
+	defer cfg.mu.Unlock()
+	// Copy the slice before setting it, so that any changes to the slice provided to SetStatsTags does not pollute the underlying array of statsTags
+	statsTags := make([]string, len(tags))
+	copy(statsTags, tags)
+	cfg.statsTags = statsTags
 }
 
 // RuntimeID returns this process's unique runtime id.

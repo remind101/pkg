@@ -15,14 +15,14 @@ import (
 // ResponseTimeReporter reports timing metrics using metrics package
 //
 // Usage:
-//   r := httpx.NewRouter()
-//   ...
-//   r.HandleFunc("/", func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-//   	w.WriteHeader(http.StatusCreated)
-//   	return nil
-//   }).Methods("GET")
-//   s := NewResponseTimeReporter(r, r)
 //
+//	r := httpx.NewRouter()
+//	...
+//	r.HandleFunc("/", func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+//		w.WriteHeader(http.StatusCreated)
+//		return nil
+//	}).Methods("GET")
+//	s := NewResponseTimeReporter(r, r)
 func NewResponseTimeReporter(handler httpx.Handler, router *httpx.Router) *responseTimeReporter {
 	if router == nil {
 		panic("NewResponseTimeReporter: router is requred")

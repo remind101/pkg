@@ -56,7 +56,7 @@ func TestHb2ReportsErrorContext(t *testing.T) {
 			request: func() *http.Request {
 				form := url.Values{}
 				form.Add("param1", "param1value")
-				req, _ := http.NewRequest("GET", "/api/foo", nil)
+				req, _ := http.NewRequestWithContext(context.Background(), "GET", "/api/foo", nil)
 				req.Header.Set("Content-Type", "application/json")
 				req.Header.Set("X-Forwarded-For", "127.0.0.1")
 				req.Header.Set("Authorization", "Basic shouldnotseeit")

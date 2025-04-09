@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -101,7 +101,7 @@ func (e *Error) Error() string {
 
 // ip returns your ip.
 func ip(ctx context.Context) (string, error) {
-	req, err := http.NewRequest("GET", "http://api.ipify.org?format=text", nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", "http://api.ipify.org?format=text", nil)
 	if err != nil {
 		return "", err
 	}
@@ -115,7 +115,7 @@ func ip(ctx context.Context) (string, error) {
 	resp := val.(*http.Response)
 	defer resp.Body.Close()
 
-	raw, err := ioutil.ReadAll(resp.Body)
+	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
