@@ -13,14 +13,16 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/DataDog/appsec-internal-go/apisec"
 	"github.com/DataDog/appsec-internal-go/log"
 )
 
 // Configuration environment variables
 const (
 	// EnvAPISecEnabled is the env var used to enable API Security
-	EnvAPISecEnabled = "DD_EXPERIMENTAL_API_SECURITY_ENABLED"
-	// EnvAPISecSampleRate is the env var used to set the sampling rate of API Security schema extraction
+	EnvAPISecEnabled = "DD_API_SECURITY_ENABLED"
+	// EnvAPISecSampleRate is the env var used to set the sampling rate of API Security schema extraction.
+	// Deprecated: a new [APISecConfig.Sampler] is now used instead of this.
 	EnvAPISecSampleRate = "DD_API_SECURITY_REQUEST_SAMPLE_RATE"
 	// EnvObfuscatorKey is the env var used to provide the WAF key obfuscation regexp
 	EnvObfuscatorKey = "DD_APPSEC_OBFUSCATION_PARAMETER_KEY_REGEXP"
@@ -32,27 +34,36 @@ const (
 	EnvTraceRateLimit = "DD_APPSEC_TRACE_RATE_LIMIT"
 	// EnvRules is the env var used to provide a path to a local security rule file
 	EnvRules = "DD_APPSEC_RULES"
+	// EnvRASPEnabled is the env var used to enable/disable RASP functionalities for ASM
+	EnvRASPEnabled = "DD_APPSEC_RASP_ENABLED"
+
+	// envAPISecSampleDelay is the env var used to set the delay for the API Security sampler in system tests.
+	// It is not indended to be set by users.
+	envAPISecSampleDelay = "DD_API_SECURITY_SAMPLE_DELAY"
 )
 
 // Configuration constants and default values
 const (
 	// DefaultAPISecSampleRate is the default rate at which API Security schemas are extracted from requests
 	DefaultAPISecSampleRate = .1
+	// DefaultAPISecSampleInterval is the default interval between two samples being taken.
+	DefaultAPISecSampleInterval = 30 * time.Second
 	// DefaultObfuscatorKeyRegex is the default regexp used to obfuscate keys
-	DefaultObfuscatorKeyRegex = `(?i)(?:p(?:ass)?w(?:or)?d|pass(?:_?phrase)?|secret|(?:api_?|private_?|public_?)key)|token|consumer_?(?:id|key|secret)|sign(?:ed|ature)|bearer|authorization`
+	DefaultObfuscatorKeyRegex = `(?i)pass|pw(?:or)?d|secret|(?:api|private|public|access)[_-]?key|token|consumer[_-]?(?:id|key|secret)|sign(?:ed|ature)|bearer|authorization|jsessionid|phpsessid|asp\.net[_-]sessionid|sid|jwt`
 	// DefaultObfuscatorValueRegex is the default regexp used to obfuscate values
-	DefaultObfuscatorValueRegex = `(?i)(?:p(?:ass)?w(?:or)?d|pass(?:_?phrase)?|secret|(?:api_?|private_?|public_?|access_?|secret_?)key(?:_?id)?|token|consumer_?(?:id|key|secret)|sign(?:ed|ature)?|auth(?:entication|orization)?)(?:\s*=[^;]|"\s*:\s*"[^"]+")|bearer\s+[a-z0-9\._\-]+|token:[a-z0-9]{13}|gh[opsu]_[0-9a-zA-Z]{36}|ey[I-L][\w=-]+\.ey[I-L][\w=-]+(?:\.[\w.+\/=-]+)?|[\-]{5}BEGIN[a-z\s]+PRIVATE\sKEY[\-]{5}[^\-]+[\-]{5}END[a-z\s]+PRIVATE\sKEY|ssh-rsa\s*[a-z0-9\/\.+]{100,}`
-	// DefaultWAFTimeout is the default time limit (ms) past which a WAF run will timeout
-	DefaultWAFTimeout = 4 * time.Millisecond
+	DefaultObfuscatorValueRegex = `(?i)(?:p(?:ass)?w(?:or)?d|pass(?:[_-]?phrase)?|secret(?:[_-]?key)?|(?:(?:api|private|public|access)[_-]?)key(?:[_-]?id)?|(?:(?:auth|access|id|refresh)[_-]?)?token|consumer[_-]?(?:id|key|secret)|sign(?:ed|ature)?|auth(?:entication|orization)?|jsessionid|phpsessid|asp\.net(?:[_-]|-)sessionid|sid|jwt)(?:\s*=[^;]|"\s*:\s*"[^"]+")|bearer\s+[a-z0-9\._\-]+|token:[a-z0-9]{13}|gh[opsu]_[0-9a-zA-Z]{36}|ey[I-L][\w=-]+\.ey[I-L][\w=-]+(?:\.[\w.+\/=-]+)?|[\-]{5}BEGIN[a-z\s]+PRIVATE\sKEY[\-]{5}[^\-]+[\-]{5}END[a-z\s]+PRIVATE\sKEY|ssh-rsa\s*[a-z0-9\/\.+]{100,}`
+	// DefaultWAFTimeout is the default time limit past which a WAF run will timeout
+	DefaultWAFTimeout = time.Millisecond
 	// DefaultTraceRate is the default limit (trace/sec) past which ASM traces are sampled out
 	DefaultTraceRate uint = 100 // up to 100 appsec traces/s
 )
 
-// APISecConfig holds the configuration for API Security schemas reporting
-// It is used to enabled/disable the feature as well as to configure the rate
-// at which schemas get reported,
+// APISecConfig holds the configuration for API Security schemas reporting.
+// It is used to enabled/disable the feature.
 type APISecConfig struct {
-	Enabled    bool
+	Sampler apisec.Sampler
+	Enabled bool
+	// Deprecated: use the new [APISecConfig.Sampler] instead.
 	SampleRate float64
 }
 
@@ -62,21 +73,27 @@ type ObfuscatorConfig struct {
 	ValueRegex string
 }
 
+type APISecOption func(*APISecConfig)
+
 // NewAPISecConfig creates and returns a new API Security configuration by reading the env
-func NewAPISecConfig() APISecConfig {
-	return APISecConfig{
-		Enabled:    apiSecurityEnabled(),
+func NewAPISecConfig(opts ...APISecOption) APISecConfig {
+	cfg := APISecConfig{
+		Enabled:    boolEnv(EnvAPISecEnabled, true),
+		Sampler:    apisec.NewSamplerWithInterval(durationEnv(envAPISecSampleDelay, "s", DefaultAPISecSampleInterval)),
 		SampleRate: readAPISecuritySampleRate(),
 	}
-}
-
-func apiSecurityEnabled() bool {
-	enabled, _ := strconv.ParseBool(os.Getenv(EnvAPISecEnabled))
-	return enabled
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+	return cfg
 }
 
 func readAPISecuritySampleRate() float64 {
 	value := os.Getenv(EnvAPISecSampleRate)
+	if value == "" {
+		return DefaultAPISecSampleRate
+	}
+
 	rate, err := strconv.ParseFloat(value, 64)
 	if err != nil {
 		logEnvVarParsingError(EnvAPISecSampleRate, value, err, DefaultAPISecSampleRate)
@@ -89,6 +106,20 @@ func readAPISecuritySampleRate() float64 {
 		rate = 1.
 	}
 	return rate
+}
+
+// WithAPISecSampler sets the sampler for the API Security configuration. This is useful for testing
+// purposes.
+func WithAPISecSampler(sampler apisec.Sampler) APISecOption {
+	return func(c *APISecConfig) {
+		c.Sampler = sampler
+	}
+}
+
+// RASPEnabled returns true if RASP functionalities are enabled through the env, or if DD_APPSEC_RASP_ENABLED
+// is not set
+func RASPEnabled() bool {
+	return boolEnv(EnvRASPEnabled, true)
 }
 
 // NewObfuscatorConfig creates and returns a new WAF obfuscator configuration by reading the env
@@ -185,4 +216,30 @@ func logEnvVarParsingError(name, value string, err error, defaultValue any) {
 
 func logUnexpectedEnvVarValue(name string, value any, reason string, defaultValue any) {
 	log.Debug("appsec: unexpected configuration value of %s=%v: %s. Using default value %v.", name, value, reason, defaultValue)
+}
+
+func boolEnv(key string, def bool) bool {
+	strVal, ok := os.LookupEnv(key)
+	if !ok {
+		return def
+	}
+	v, err := strconv.ParseBool(strVal)
+	if err != nil {
+		logEnvVarParsingError(key, strVal, err, def)
+		return def
+	}
+	return v
+}
+
+func durationEnv(key string, unit string, def time.Duration) time.Duration {
+	strVal, ok := os.LookupEnv(key)
+	if !ok {
+		return def
+	}
+	val, err := time.ParseDuration(strVal + unit)
+	if err != nil {
+		logEnvVarParsingError(key, strVal, err, def)
+		return def
+	}
+	return val
 }

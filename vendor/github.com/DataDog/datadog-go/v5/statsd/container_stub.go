@@ -3,7 +3,11 @@
 
 package statsd
 
-func initContainerID(userProvidedID string, cgroupFallback bool) {
+func isHostCgroupNamespace() bool {
+	return false
+}
+
+var initContainerID = func(userProvidedID string, _, _ bool) {
 	initOnce.Do(func() {
 		if userProvidedID != "" {
 			containerID = userProvidedID

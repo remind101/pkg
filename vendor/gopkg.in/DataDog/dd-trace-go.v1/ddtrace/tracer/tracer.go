@@ -8,6 +8,8 @@ package tracer
 import (
 	gocontext "context"
 	"encoding/binary"
+	"log/slog"
+	"math"
 	"os"
 	"runtime/pprof"
 	rt "runtime/trace"
@@ -21,6 +23,7 @@ import (
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/internal"
 	globalinternal "gopkg.in/DataDog/dd-trace-go.v1/internal"
 	"gopkg.in/DataDog/dd-trace-go.v1/internal/appsec"
+	appsecConfig "gopkg.in/DataDog/dd-trace-go.v1/internal/appsec/config"
 	"gopkg.in/DataDog/dd-trace-go.v1/internal/datastreams"
 	"gopkg.in/DataDog/dd-trace-go.v1/internal/hostname"
 	"gopkg.in/DataDog/dd-trace-go.v1/internal/log"
@@ -30,6 +33,7 @@ import (
 	"gopkg.in/DataDog/dd-trace-go.v1/internal/traceprof"
 
 	"github.com/DataDog/datadog-agent/pkg/obfuscate"
+	"github.com/DataDog/go-runtime-metrics-internal/pkg/runtimemetrics"
 )
 
 var _ ddtrace.Tracer = (*tracer)(nil)
@@ -79,6 +83,11 @@ type tracer struct {
 	// finished, and dropped
 	spansStarted, spansFinished, tracesDropped uint32
 
+	// Keeps track of the total number of traces dropped for accurate logging.
+	totalTracesDropped uint32
+
+	logDroppedTraces *time.Ticker
+
 	// Records the number of dropped P0 traces and spans.
 	droppedP0Traces, droppedP0Spans uint32
 
@@ -104,6 +113,11 @@ type tracer struct {
 	// abandonedSpansDebugger specifies where and how potentially abandoned spans are stored
 	// when abandoned spans debugging is enabled.
 	abandonedSpansDebugger *abandonedSpansDebugger
+
+	// logFile contains a pointer to the file for writing tracer logs along with helper functionality for closing the file
+	// logFile is closed when tracer stops
+	// by default, tracer logs to stderr and this setting is unused
+	logFile *log.ManagedFile
 }
 
 const (
@@ -137,7 +151,7 @@ func Start(opts ...StartOption) {
 	}
 	defer telemetry.Time(telemetry.NamespaceGeneral, "init_time", nil, true)()
 	t := newTracer(opts...)
-	if !t.config.enabled {
+	if !t.config.enabled.current {
 		// TODO: instrumentation telemetry client won't get started
 		// if tracing is disabled, but we still want to capture this
 		// telemetry information. Will be fixed when the tracer and profiler
@@ -145,12 +159,22 @@ func Start(opts ...StartOption) {
 		return
 	}
 	internal.SetGlobalTracer(t)
-	if t.config.logStartup {
-		logStartup(t)
-	}
 	if t.dataStreams != nil {
 		t.dataStreams.Start()
 	}
+	if t.config.ciVisibilityAgentless {
+		// CI Visibility agentless mode doesn't require remote configuration.
+
+		// start instrumentation telemetry unless it is disabled through the
+		// DD_INSTRUMENTATION_TELEMETRY_ENABLED env var
+		startTelemetry(t.config)
+
+		// start appsec
+		appsec.Start(t.config.appsecStartOptions...)
+		_ = t.hostname() // Prime the hostname cache
+		return
+	}
+
 	// Start AppSec with remote configuration
 	cfg := remoteconfig.DefaultClientConfig()
 	cfg.AgentURL = t.config.agentURL.String()
@@ -161,10 +185,23 @@ func Start(opts ...StartOption) {
 	if err := t.startRemoteConfig(cfg); err != nil {
 		log.Warn("Remote config startup error: %s", err)
 	}
-	appsec.Start(appsec.WithRCConfig(cfg))
+
 	// start instrumentation telemetry unless it is disabled through the
 	// DD_INSTRUMENTATION_TELEMETRY_ENABLED env var
 	startTelemetry(t.config)
+
+	// appsec.Start() may use the telemetry client to report activation, so it is
+	// important this happens _AFTER_ startTelemetry() has been called, so the
+	// client is appropriately configured.
+	appsecopts := make([]appsecConfig.StartOption, 0, len(t.config.appsecStartOptions)+1)
+	appsecopts = append(appsecopts, t.config.appsecStartOptions...)
+	appsecopts = append(appsecopts, appsecConfig.WithRCConfig(cfg), appsecConfig.WithMetaStructAvailable(t.config.agent.metaStructAvailable))
+	appsec.Start(appsecopts...)
+
+	if t.config.logStartup {
+		logStartup(t)
+	}
+
 	_ = t.hostname() // Prime the hostname cache
 }
 
@@ -228,7 +265,9 @@ func newUnstartedTracer(opts ...StartOption) *tracer {
 		log.Warn("Runtime and health metrics disabled: %v", err)
 	}
 	var writer traceWriter
-	if c.logToStdout {
+	if c.ciVisibilityEnabled {
+		writer = newCiVisibilityTraceWriter(c)
+	} else if c.logToStdout {
 		writer = newLogTraceWriter(c, statsd)
 	} else {
 		writer = newAgentTraceWriter(c, sampler, statsd)
@@ -243,15 +282,29 @@ func newUnstartedTracer(opts ...StartOption) *tracer {
 	if spans != nil {
 		c.spanRules = spans
 	}
-	globalRate := globalSampleRate()
-	rulesSampler := newRulesSampler(c.traceRules, c.spanRules, globalRate)
-	c.traceSampleRate = newDynamicConfig(globalRate, rulesSampler.traces.setGlobalSampleRate)
+
+	rulesSampler := newRulesSampler(c.traceRules, c.spanRules, c.globalSampleRate, c.traceRateLimitPerSecond)
+	c.traceSampleRate = newDynamicConfig("trace_sample_rate", c.globalSampleRate, rulesSampler.traces.setGlobalSampleRate, equal[float64])
+	// If globalSampleRate returns NaN, it means the environment variable was not set or valid.
+	// We could always set the origin to "env_var" inconditionally, but then it wouldn't be possible
+	// to distinguish between the case where the environment variable was not set and the case where
+	// it default to NaN.
+	if !math.IsNaN(c.globalSampleRate) {
+		c.traceSampleRate.cfgOrigin = telemetry.OriginEnvVar
+	}
+	c.traceSampleRules = newDynamicConfig("trace_sample_rules", c.traceRules,
+		rulesSampler.traces.setTraceSampleRules, EqualsFalseNegative)
 	var dataStreamsProcessor *datastreams.Processor
 	if c.dataStreamsMonitoringEnabled {
-		dataStreamsProcessor = datastreams.NewProcessor(statsd, c.env, c.serviceName, c.version, c.agentURL, c.httpClient, func() bool {
-			f := loadAgentFeatures(c.logToStdout, c.agentURL, c.httpClient)
-			return f.DataStreams
-		})
+		dataStreamsProcessor = datastreams.NewProcessor(statsd, c.env, c.serviceName, c.version, c.agentURL, c.httpClient)
+	}
+	var logFile *log.ManagedFile
+	if v := c.logDirectory; v != "" {
+		logFile, err = log.OpenFileAtPath(v)
+		if err != nil {
+			log.Warn("%v", err)
+			c.logDirectory = ""
+		}
 	}
 	t := &tracer{
 		config:           c,
@@ -262,18 +315,19 @@ func newUnstartedTracer(opts ...StartOption) *tracer {
 		rulesSampling:    rulesSampler,
 		prioritySampling: sampler,
 		pid:              os.Getpid(),
-		stats:            newConcentrator(c, defaultStatsBucketSize),
+		logDroppedTraces: time.NewTicker(1 * time.Second),
+		stats:            newConcentrator(c, defaultStatsBucketSize, statsd),
 		obfuscator: obfuscate.NewObfuscator(obfuscate.Config{
 			SQL: obfuscate.SQLConfig{
 				TableNames:       c.agent.HasFlag("table_names"),
 				ReplaceDigits:    c.agent.HasFlag("quantize_sql_tables") || c.agent.HasFlag("replace_sql_digits"),
 				KeepSQLAlias:     c.agent.HasFlag("keep_sql_alias"),
 				DollarQuotedFunc: c.agent.HasFlag("dollar_quoted_func"),
-				Cache:            c.agent.HasFlag("sql_cache"),
 			},
 		}),
 		statsd:      statsd,
 		dataStreams: dataStreamsProcessor,
+		logFile:     logFile,
 	}
 	return t
 }
@@ -295,6 +349,14 @@ func newTracer(opts ...StartOption) *tracer {
 			t.reportRuntimeMetrics(defaultMetricsReportInterval)
 		}()
 	}
+	if c.runtimeMetricsV2 {
+		l := slog.New(slogHandler{})
+		if err := runtimemetrics.Start(t.statsd, l); err == nil {
+			l.Debug("Runtime metrics v2 enabled.")
+		} else {
+			l.Error("Failed to enable runtime metrics v2", "err", err.Error())
+		}
+	}
 	if c.debugAbandonedSpans {
 		log.Info("Abandoned spans logs enabled.")
 		t.abandonedSpansDebugger = newAbandonedSpansDebugger()
@@ -314,7 +376,7 @@ func newTracer(opts ...StartOption) *tracer {
 	t.wg.Add(1)
 	go func() {
 		defer t.wg.Done()
-		t.reportHealthMetrics(statsInterval)
+		t.reportHealthMetricsAtInterval(statsInterval)
 	}()
 	t.stats.Start()
 	return t
@@ -364,9 +426,11 @@ func (t *tracer) worker(tick <-chan time.Time) {
 			t.statsd.Incr("datadog.tracer.flush_triggered", []string{"reason:invoked"}, 1)
 			t.traceWriter.flush()
 			t.statsd.Flush()
-			t.stats.flushAndSend(time.Now(), withCurrentBucket)
+			if !t.config.tracingAsTransport {
+				t.stats.flushAndSend(time.Now(), withCurrentBucket)
+			}
 			// TODO(x): In reality, the traceWriter.flush() call is not synchronous
-			// when using the agent traceWriter. However, this functionnality is used
+			// when using the agent traceWriter. However, this functionality is used
 			// in Lambda so for that purpose this mechanism should suffice.
 			done <- struct{}{}
 
@@ -419,11 +483,11 @@ func (t *tracer) sampleChunk(c *chunk) {
 			atomic.AddUint32(&t.partialTraces, 1)
 		}
 	}
-	if len(kept) == 0 {
-		atomic.AddUint32(&t.droppedP0Traces, 1)
-	}
 	atomic.AddUint32(&t.droppedP0Spans, uint32(len(c.spans)-len(kept)))
 	if !c.willSend {
+		if len(kept) == 0 {
+			atomic.AddUint32(&t.droppedP0Traces, 1)
+		}
 		c.spans = kept
 	}
 }
@@ -437,12 +501,23 @@ func (t *tracer) pushChunk(trace *chunk) {
 	select {
 	case t.out <- trace:
 	default:
-		log.Error("payload queue full, dropping %d traces", len(trace.spans))
+		log.Debug("payload queue full, trace dropped %d spans", len(trace.spans))
+		atomic.AddUint32(&t.totalTracesDropped, 1)
+	}
+	select {
+	case <-t.logDroppedTraces.C:
+		if t := atomic.SwapUint32(&t.totalTracesDropped, 0); t > 0 {
+			log.Error("%d traces dropped through payload queue", t)
+		}
+	default:
 	}
 }
 
 // StartSpan creates, starts, and returns a new Span with the given `operationName`.
 func (t *tracer) StartSpan(operationName string, options ...ddtrace.StartSpanOption) ddtrace.Span {
+	if !t.config.enabled.current {
+		return internal.NoopSpan{}
+	}
 	var opts ddtrace.StartSpanConfig
 	for _, fn := range options {
 		fn(&opts)
@@ -497,6 +572,9 @@ func (t *tracer) StartSpan(operationName string, options ...ddtrace.StartSpanOpt
 		Start:        startTime,
 		noDebugStack: t.config.noDebugStack,
 	}
+
+	span.SpanLinks = append(span.SpanLinks, opts.SpanLinks...)
+
 	if t.config.hostname != "" {
 		span.setMeta(keyHostname, t.config.hostname)
 	}
@@ -519,6 +597,11 @@ func (t *tracer) StartSpan(operationName string, options ...ddtrace.StartSpanOpt
 				span.setMeta(keyOrigin, context.origin)
 			}
 		}
+
+		if context.reparentID != "" {
+			span.setMeta(keyReparentID, context.reparentID)
+		}
+
 	}
 	span.context = newSpanContext(span, context)
 	span.setMetric(ext.Pid, float64(t.pid))
@@ -529,7 +612,7 @@ func (t *tracer) StartSpan(operationName string, options ...ddtrace.StartSpanOpt
 		span.SetTag(k, v)
 	}
 	// add global tags
-	for k, v := range t.config.globalTags {
+	for k, v := range t.config.globalTags.get() {
 		span.SetTag(k, v)
 	}
 	if t.config.serviceMappings != nil {
@@ -582,13 +665,6 @@ func (t *tracer) StartSpan(operationName string, options ...ddtrace.StartSpanOpt
 		}
 	}
 	return span
-}
-
-// generateSpanID returns a random uint64 that has been XORd with the startTime.
-// This is done to get around the 32-bit random seed limitation that may create collisions if there is a large number
-// of go services all generating spans.
-func generateSpanID(startTime int64) uint64 {
-	return random.Uint64() ^ uint64(startTime)
 }
 
 // applyPPROFLabels applies pprof labels for the profiler's code hotspots and
@@ -647,16 +723,74 @@ func (t *tracer) Stop() {
 	}
 	appsec.Stop()
 	remoteconfig.Stop()
+	// Close log file last to account for any logs from the above calls
+	if t.logFile != nil {
+		t.logFile.Close()
+	}
 }
 
 // Inject uses the configured or default TextMap Propagator.
 func (t *tracer) Inject(ctx ddtrace.SpanContext, carrier interface{}) error {
+	if !t.config.enabled.current {
+		return nil
+	}
+
+	if t.config.tracingAsTransport {
+		// in tracing as transport mode, only propagate when there is an upstream appsec event
+		// TODO: replace with _dd.p.ts in the next iteration standardizing this for other products, comparing enabled products in `t.config` with their corresponding `_dd.p.ts` bitfields
+		if ctx, ok := ctx.(*spanContext); ok && ctx.trace != nil && ctx.trace.propagatingTag("_dd.p.appsec") != "1" {
+			return nil
+		}
+	}
+
+	t.updateSampling(ctx)
 	return t.config.propagator.Inject(ctx, carrier)
+}
+
+// updateSampling runs trace sampling rules on the context, since properties like resource / tags
+// could change and impact the result of sampling. This must be done once before context is propagated.
+func (t *tracer) updateSampling(ctx ddtrace.SpanContext) {
+	sctx, ok := ctx.(*spanContext)
+	if sctx == nil || !ok {
+		return
+	}
+	// without this check some mock spans tests fail
+	if t.rulesSampling == nil || sctx.trace == nil || sctx.trace.root == nil {
+		return
+	}
+	// want to avoid locking the entire trace from a span for long.
+	// if SampleTrace successfully samples the trace,
+	// it will lock the span and the trace mutexes in span.setSamplingPriorityLocked
+	// and trace.setSamplingPriority respectively, so we can't rely on those mutexes.
+	if sctx.trace.isLocked() {
+		// trace sampling decision already taken and locked, no re-sampling shall occur
+		return
+	}
+
+	// the span was sampled with ManualKeep rules shouldn't override
+	if sctx.trace.propagatingTag(keyDecisionMaker) == "-4" {
+		return
+	}
+	// if sampling was successful, need to lock the trace to prevent further re-sampling
+	if t.rulesSampling.SampleTrace(sctx.trace.root) {
+		sctx.trace.setLocked(true)
+	}
 }
 
 // Extract uses the configured or default TextMap Propagator.
 func (t *tracer) Extract(carrier interface{}) (ddtrace.SpanContext, error) {
-	return t.config.propagator.Extract(carrier)
+	if !t.config.enabled.current {
+		return internal.NoopSpanContext{}, nil
+	}
+	ctx, err := t.config.propagator.Extract(carrier)
+	if t.config.tracingAsTransport {
+		// in tracing as transport mode, reset upstream sampling decision to make sure we keep 1 trace/minute
+		// TODO: replace with _dd.p.ts in the next iteration standardizing this for other products, comparing enabled products in `t.config` with their corresponding `_dd.p.ts` bitfields
+		if ctx, ok := ctx.(*spanContext); ok && ctx.trace.propagatingTag("_dd.p.appsec") != "1" {
+			ctx.trace.priority = nil
+		}
+	}
+	return ctx, err
 }
 
 // sampleRateMetricKey is the metric key holding the applied sample rate. Has to be the same as the Agent.
@@ -676,6 +810,9 @@ func (t *tracer) sample(span *span) {
 	}
 	if rs, ok := sampler.(RateSampler); ok && rs.Rate() < 1 {
 		span.setMetric(sampleRateMetricKey, rs.Rate())
+	}
+	if t.rulesSampling.SampleTraceGlobalRate(span) {
+		return
 	}
 	if t.rulesSampling.SampleTrace(span) {
 		return

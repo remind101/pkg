@@ -23,16 +23,17 @@ import (
 	"github.com/DataDog/sketches-go/ddsketch"
 	"github.com/DataDog/sketches-go/ddsketch/mapping"
 	"github.com/DataDog/sketches-go/ddsketch/store"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
-	bucketDuration            = time.Second * 10
-	loadAgentFeaturesInterval = time.Second * 30
-	defaultServiceName        = "unnamed-go-service"
+	bucketDuration     = time.Second * 10
+	defaultServiceName = "unnamed-go-service"
 )
 
-var sketchMapping, _ = mapping.NewLogarithmicMapping(0.01)
+// use the same gamma and index offset as the Datadog backend, to avoid doing any conversions in
+// the backend that would lead to a loss of precision
+var sketchMapping, _ = mapping.NewLogarithmicMappingWithGamma(1.015625, 1.8761281912861705)
 
 type statsPoint struct {
 	edgeTags       []string
@@ -55,20 +56,22 @@ type statsGroup struct {
 }
 
 type bucket struct {
-	points               map[uint64]statsGroup
-	latestCommitOffsets  map[partitionConsumerKey]int64
-	latestProduceOffsets map[partitionKey]int64
-	start                uint64
-	duration             uint64
+	points                     map[uint64]statsGroup
+	latestCommitOffsets        map[partitionConsumerKey]int64
+	latestProduceOffsets       map[partitionKey]int64
+	latestHighWatermarkOffsets map[partitionKey]int64
+	start                      uint64
+	duration                   uint64
 }
 
 func newBucket(start, duration uint64) bucket {
 	return bucket{
-		points:               make(map[uint64]statsGroup),
-		latestCommitOffsets:  make(map[partitionConsumerKey]int64),
-		latestProduceOffsets: make(map[partitionKey]int64),
-		start:                start,
-		duration:             duration,
+		points:                     make(map[uint64]statsGroup),
+		latestCommitOffsets:        make(map[partitionConsumerKey]int64),
+		latestProduceOffsets:       make(map[partitionKey]int64),
+		latestHighWatermarkOffsets: make(map[partitionKey]int64),
+		start:                      start,
+		duration:                   duration,
 	}
 }
 
@@ -105,7 +108,7 @@ func (b bucket) export(timestampType TimestampType) StatsBucket {
 		Start:    b.start,
 		Duration: b.duration,
 		Stats:    stats,
-		Backlogs: make([]Backlog, 0, len(b.latestCommitOffsets)+len(b.latestProduceOffsets)),
+		Backlogs: make([]Backlog, 0, len(b.latestCommitOffsets)+len(b.latestProduceOffsets)+len(b.latestHighWatermarkOffsets)),
 	}
 	for key, offset := range b.latestProduceOffsets {
 		exported.Backlogs = append(exported.Backlogs, Backlog{Tags: []string{fmt.Sprintf("partition:%d", key.partition), fmt.Sprintf("topic:%s", key.topic), "type:kafka_produce"}, Value: offset})
@@ -113,7 +116,24 @@ func (b bucket) export(timestampType TimestampType) StatsBucket {
 	for key, offset := range b.latestCommitOffsets {
 		exported.Backlogs = append(exported.Backlogs, Backlog{Tags: []string{fmt.Sprintf("consumer_group:%s", key.group), fmt.Sprintf("partition:%d", key.partition), fmt.Sprintf("topic:%s", key.topic), "type:kafka_commit"}, Value: offset})
 	}
+	for key, offset := range b.latestHighWatermarkOffsets {
+		exported.Backlogs = append(exported.Backlogs, Backlog{Tags: []string{fmt.Sprintf("partition:%d", key.partition), fmt.Sprintf("topic:%s", key.topic), "type:kafka_high_watermark"}, Value: offset})
+	}
 	return exported
+}
+
+type pointType int
+
+const (
+	pointTypeStats pointType = iota
+	pointTypeKafkaOffset
+)
+
+type processorInput struct {
+	point       statsPoint
+	kafkaOffset kafkaOffset
+	typ         pointType
+	queuePos    int64
 }
 
 type processorStats struct {
@@ -140,6 +160,7 @@ type offsetType int
 const (
 	produceOffset offsetType = iota
 	commitOffset
+	highWatermarkOffset
 )
 
 type kafkaOffset struct {
@@ -152,7 +173,8 @@ type kafkaOffset struct {
 }
 
 type Processor struct {
-	in                   chan statsPoint
+	in                   *fastQueue
+	hashCache            *hashCache
 	inKafka              chan kafkaOffset
 	tsTypeCurrentBuckets map[int64]bucket
 	tsTypeOriginBuckets  map[int64]bucket
@@ -168,9 +190,7 @@ type Processor struct {
 	service              string
 	version              string
 	// used for tests
-	timeSource                  func() time.Time
-	disableStatsFlushing        uint32
-	getAgentSupportsDataStreams func() bool
+	timeSource func() time.Time
 }
 
 func (p *Processor) time() time.Time {
@@ -180,25 +200,23 @@ func (p *Processor) time() time.Time {
 	return time.Now()
 }
 
-func NewProcessor(statsd internal.StatsdClient, env, service, version string, agentURL *url.URL, httpClient *http.Client, getAgentSupportsDataStreams func() bool) *Processor {
+func NewProcessor(statsd internal.StatsdClient, env, service, version string, agentURL *url.URL, httpClient *http.Client) *Processor {
 	if service == "" {
 		service = defaultServiceName
 	}
 	p := &Processor{
-		tsTypeCurrentBuckets:        make(map[int64]bucket),
-		tsTypeOriginBuckets:         make(map[int64]bucket),
-		in:                          make(chan statsPoint, 10000),
-		inKafka:                     make(chan kafkaOffset, 10000),
-		stopped:                     1,
-		statsd:                      statsd,
-		env:                         env,
-		service:                     service,
-		version:                     version,
-		transport:                   newHTTPTransport(agentURL, httpClient),
-		timeSource:                  time.Now,
-		getAgentSupportsDataStreams: getAgentSupportsDataStreams,
+		tsTypeCurrentBuckets: make(map[int64]bucket),
+		tsTypeOriginBuckets:  make(map[int64]bucket),
+		hashCache:            newHashCache(),
+		in:                   newFastQueue(),
+		stopped:              1,
+		statsd:               statsd,
+		env:                  env,
+		service:              service,
+		version:              version,
+		transport:            newHTTPTransport(agentURL, httpClient),
+		timeSource:           time.Now,
 	}
-	p.updateAgentSupportsDataStreams(getAgentSupportsDataStreams())
 	return p
 }
 
@@ -257,6 +275,13 @@ func (p *Processor) addKafkaOffset(o kafkaOffset) {
 		}] = o.offset
 		return
 	}
+	if o.offsetType == highWatermarkOffset {
+		b.latestHighWatermarkOffsets[partitionKey{
+			partition: o.partition,
+			topic:     o.topic,
+		}] = o.offset
+		return
+	}
 	b.latestCommitOffsets[partitionConsumerKey{
 		partition: o.partition,
 		group:     o.group,
@@ -264,23 +289,45 @@ func (p *Processor) addKafkaOffset(o kafkaOffset) {
 	}] = o.offset
 }
 
+func (p *Processor) processInput(in *processorInput) {
+	atomic.AddInt64(&p.stats.payloadsIn, 1)
+	if in.typ == pointTypeStats {
+		p.add(in.point)
+	} else if in.typ == pointTypeKafkaOffset {
+		p.addKafkaOffset(in.kafkaOffset)
+	}
+}
+
+func (p *Processor) flushInput() {
+	for {
+		in := p.in.pop()
+		if in == nil {
+			return
+		}
+		p.processInput(in)
+	}
+}
+
 func (p *Processor) run(tick <-chan time.Time) {
 	for {
 		select {
-		case s := <-p.in:
-			atomic.AddInt64(&p.stats.payloadsIn, 1)
-			p.add(s)
-		case o := <-p.inKafka:
-			p.addKafkaOffset(o)
 		case now := <-tick:
 			p.sendToAgent(p.flush(now))
 		case done := <-p.flushRequest:
+			p.flushInput()
 			p.sendToAgent(p.flush(time.Now().Add(bucketDuration * 10)))
 			close(done)
 		case <-p.stop:
 			// drop in flight payloads on the input channel
 			p.sendToAgent(p.flush(time.Now().Add(bucketDuration * 10)))
 			return
+		default:
+			s := p.in.pop()
+			if s == nil {
+				time.Sleep(time.Millisecond * 10)
+				continue
+			}
+			p.processInput(s)
 		}
 	}
 }
@@ -293,19 +340,17 @@ func (p *Processor) Start() {
 	}
 	p.stop = make(chan struct{})
 	p.flushRequest = make(chan chan<- struct{})
-	p.wg.Add(2)
-	go p.reportStats()
+	p.wg.Add(1)
+	go func() {
+		defer p.wg.Done()
+		p.reportStats()
+	}()
+	p.wg.Add(1)
 	go func() {
 		defer p.wg.Done()
 		tick := time.NewTicker(bucketDuration)
 		defer tick.Stop()
 		p.run(tick.C)
-	}()
-	go func() {
-		defer p.wg.Done()
-		tick := time.NewTicker(loadAgentFeaturesInterval)
-		defer tick.Stop()
-		p.runLoadAgentFeatures(tick.C)
 	}()
 }
 
@@ -331,7 +376,14 @@ func (p *Processor) Stop() {
 }
 
 func (p *Processor) reportStats() {
-	for range time.NewTicker(time.Second * 10).C {
+	tick := time.NewTicker(time.Second * 10)
+	defer tick.Stop()
+	for {
+		select {
+		case <-p.stop:
+			return
+		case <-tick.C:
+		}
 		p.statsd.Count("datadog.datastreams.processor.payloads_in", atomic.SwapInt64(&p.stats.payloadsIn, 0), nil, 1)
 		p.statsd.Count("datadog.datastreams.processor.flushed_payloads", atomic.SwapInt64(&p.stats.flushedPayloads, 0), nil, 1)
 		p.statsd.Count("datadog.datastreams.processor.flushed_buckets", atomic.SwapInt64(&p.stats.flushedBuckets, 0), nil, 1)
@@ -397,12 +449,11 @@ func (p *Processor) SetCheckpointWithParams(ctx context.Context, params options.
 		parentHash = parent.GetHash()
 	}
 	child := Pathway{
-		hash:         pathwayHash(nodeHash(p.service, p.env, edgeTags), parentHash),
+		hash:         p.hashCache.get(p.service, p.env, edgeTags, parentHash),
 		pathwayStart: pathwayStart,
 		edgeStart:    now,
 	}
-	select {
-	case p.in <- statsPoint{
+	dropped := p.in.push(&processorInput{typ: pointTypeStats, point: statsPoint{
 		edgeTags:       edgeTags,
 		parentHash:     parentHash,
 		hash:           child.hash,
@@ -410,63 +461,50 @@ func (p *Processor) SetCheckpointWithParams(ctx context.Context, params options.
 		pathwayLatency: now.Sub(pathwayStart).Nanoseconds(),
 		edgeLatency:    now.Sub(edgeStart).Nanoseconds(),
 		payloadSize:    params.PayloadSize,
-	}:
-	default:
+	}})
+	if dropped {
 		atomic.AddInt64(&p.stats.dropped, 1)
 	}
 	return ContextWithPathway(ctx, child)
 }
 
 func (p *Processor) TrackKafkaCommitOffset(group string, topic string, partition int32, offset int64) {
-	select {
-	case p.inKafka <- kafkaOffset{
+	dropped := p.in.push(&processorInput{typ: pointTypeKafkaOffset, kafkaOffset: kafkaOffset{
 		offset:     offset,
 		group:      group,
 		topic:      topic,
 		partition:  partition,
 		offsetType: commitOffset,
-		timestamp:  p.time().UnixNano(),
-	}:
-	default:
+		timestamp:  p.time().UnixNano()}})
+	if dropped {
 		atomic.AddInt64(&p.stats.dropped, 1)
 	}
 }
 
 func (p *Processor) TrackKafkaProduceOffset(topic string, partition int32, offset int64) {
-	select {
-	case p.inKafka <- kafkaOffset{
+	dropped := p.in.push(&processorInput{typ: pointTypeKafkaOffset, kafkaOffset: kafkaOffset{
 		offset:     offset,
 		topic:      topic,
 		partition:  partition,
 		offsetType: produceOffset,
 		timestamp:  p.time().UnixNano(),
-	}:
-	default:
+	}})
+	if dropped {
 		atomic.AddInt64(&p.stats.dropped, 1)
 	}
 }
 
-func (p *Processor) runLoadAgentFeatures(tick <-chan time.Time) {
-	for {
-		select {
-		case <-tick:
-			p.updateAgentSupportsDataStreams(p.getAgentSupportsDataStreams())
-		case <-p.stop:
-			return
-		}
-	}
-}
-
-func (p *Processor) updateAgentSupportsDataStreams(agentSupportsDataStreams bool) {
-	var disableStatsFlushing uint32
-	if !agentSupportsDataStreams {
-		disableStatsFlushing = 1
-	}
-	if atomic.SwapUint32(&p.disableStatsFlushing, disableStatsFlushing) != disableStatsFlushing {
-		if agentSupportsDataStreams {
-			log.Info("Detected agent upgrade. Turning on Data Streams Monitoring.")
-		} else {
-			log.Warn("Turning off Data Streams Monitoring. Upgrade your agent to 7.34+")
-		}
+// TrackKafkaHighWatermarkOffset should be used in the consumer, to track the high watermark offsets of each partition.
+// The first argument is the Kafka cluster ID, and will be used later.
+func (p *Processor) TrackKafkaHighWatermarkOffset(_ string, topic string, partition int32, offset int64) {
+	dropped := p.in.push(&processorInput{typ: pointTypeKafkaOffset, kafkaOffset: kafkaOffset{
+		offset:     offset,
+		topic:      topic,
+		partition:  partition,
+		offsetType: highWatermarkOffset,
+		timestamp:  p.time().UnixNano(),
+	}})
+	if dropped {
+		atomic.AddInt64(&p.stats.dropped, 1)
 	}
 }
