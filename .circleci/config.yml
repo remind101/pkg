@@ -8,15 +8,14 @@ workflows:
 
 jobs:
   build-and-test:
-    docker:
-      - image: cimg/go:1.21.5
+    docker: &docker
+      - image: cimg/go:1.25.0
     steps:
       - checkout
       - run: go vet ./...
       - run: go test ./...
   govulncheck:
-    docker:
-      - image: cimg/go:1.21.5
+    docker: *docker
     steps:
       - checkout
       - run: go install golang.org/x/vuln/cmd/govulncheck@latest
